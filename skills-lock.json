@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "wordpress-cli": {
+      "source": "spenserhale/skills",
+      "sourceType": "github",
+      "skillPath": "skills/wordpress-cli/SKILL.md",
+      "computedHash": "afd901fc1b5b113b67979fc667f41662fd1e6d2d1c98e371fed2408e7e746b78"
+    },
+    "wordpress-performance": {
+      "source": "spenserhale/skills",
+      "sourceType": "github",
+      "skillPath": "skills/wordpress-performance/SKILL.md",
+      "computedHash": "dcba3433c734b4ffc9695d99a16dd02860742d506e7e838a277017181c255b1a"
+    },
+    "wp-components": {
+      "source": "spenserhale/skills",
+      "sourceType": "github",
+      "skillPath": "skills/wp-components/SKILL.md",
+      "computedHash": "75ce69909cf4eeab666f76dcfd07603d21d60bc004bcc8ed7bbb5b4aeaf58ed2"
+    },
+    "wp-vip-cli": {
+      "source": "spenserhale/skills",
+      "sourceType": "github",
+      "skillPath": "skills/wp-vip-cli/SKILL.md",
+      "computedHash": "3b9d092d180fff411dffeac17afe62343c0f4e3cd5828422f025029a28a9a1a7"
+    }
+  }
+}

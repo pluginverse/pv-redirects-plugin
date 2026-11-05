@@ -1,0 +1,16 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Build: build/ JS is committed; only source maps are disposable
+/build/*.js.map
+/build/**/*.js.map
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log
+.phpunit.result.cache

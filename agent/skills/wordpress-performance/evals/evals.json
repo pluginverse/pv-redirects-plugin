@@ -1,0 +1,43 @@
+{
+  "skill_name": "wordpress-performance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "our REST endpoints and archive pages got slower after we shipped a content filter plugin. registration is add_filter('the_content', 'Acme\\Content\\ContentFilter::filter'); and filter() is just `return app()->make(ContentFilter::class)->apply($content);` — ContentFilter needs an HttpClient (built from env + an option) and a SettingsRepo. container binding is a plain bind(), not singleton. is this fine? what would you change and how do we prove it helped?",
+      "expected_output": "Identifies that the lazy static entry point rebuilds the whole object graph on every fire of a hook that fires many times per request, recommends memoizing (static property or singleton binding) while keeping a removable callback form, and gives a measurement plan with fire counts per request type and an interleaved A/B.",
+      "files": [],
+      "expectations": [
+        "States that the_content can fire many times per request (for example once per post rendered in an archive loop or REST list) and that the non-shared make() rebuilds ContentFilter and its dependencies on every fire",
+        "Recommends memoizing the instance (static property memo or a singleton/shared binding) rather than switching to an eager object built at boot",
+        "Recommends the array form ['Acme\\Content\\ContentFilter', 'filter'] or keeps a string/array form, noting it stays removable with remove_filter (does not switch to a closure or first-class callable)",
+        "Proposes measuring hook fire counts per request type (did_filter()/$wp_filters or a recorder) and verifying with an A/B or before/after comparison over many requests"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "trying to make our plugin boot lazier. is `add_action('init', Acme\\Boot\\Registrar::register(...));` (the new first-class callable syntax) lazy? and I'm thinking of converting all our hook classes to static methods since static calls are faster than instance calls in PHP. sanity check please",
+      "expected_output": "Explains that first-class callable syntax loads the class at registration and produces an unremovable closure, recommends the array or string form, says static vs instance call speed is negligible, and frames the static vs instance choice around state and its lifetime.",
+      "files": [],
+      "expectations": [
+        "Says Registrar::register(...) creates a Closure immediately, which autoloads the class at registration time, so it is not lazy",
+        "Says a first-class callable registration cannot be removed by third parties with remove_action",
+        "Recommends ['Acme\\Boot\\Registrar', 'register'] or 'Acme\\Boot\\Registrar::register' as the lazy, removable form",
+        "Says the static vs instance call-speed difference is negligible and that the choice should depend on state (stateless code static; configured collaborators as memoized instances)",
+        "Warns that static state lives for the whole process (multisite switch_to_blog, Action Scheduler batches or long WP-CLI loops) and needs keying or resets"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "we're on WordPress VIP. cron jobs seem to eat a ton of resources and logged-in wp-admin feels sluggish. we have New Relic. how do I measure where the boot time actually goes for cron events vs admin pages, properly, before we start optimizing?",
+      "expected_output": "A VIP-aware measurement plan: per-request-type baselines, userland instrumentation using core hook counters shipped off-box, awareness that each Cron Control event is a full boot and that wp_doing_cron() is false during boot, and the observer effects of New Relic and Query Monitor.",
+      "files": [],
+      "expectations": [
+        "Explains that VIP Cron Control runs each cron event as its own WP-CLI command, a full WordPress boot per event, so boot cost multiplies by event count, and suggests batching (e.g. Action Scheduler) for high-volume events",
+        "Notes wp_doing_cron()/DOING_CRON is not set during boot for these runs, so classification needs WP_CLI and argv (or similar early signals)",
+        "Recommends userland instrumentation (a recorder mu-plugin or $wp_actions/$wp_filters counters with hrtime/getrusage/memory) and shipping data off-box (New Relic custom attributes or logs) because VIP has no profiling extensions and a read-only filesystem",
+        "Warns that New Relic resolves add_filter callbacks at registration (autoloading classes) and/or that Transaction events lack CPU and memory, so custom attributes are needed and lazy-loading gains should not be judged from New Relic samples",
+        "Says to disable Query Monitor (QM_DISABLED) when measuring, especially in vip dev-env where it runs on every request"
+      ]
+    }
+  ]
+}

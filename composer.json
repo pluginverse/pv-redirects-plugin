@@ -1,0 +1,43 @@
+{
+    "name": "spenserhale/pv-redirects-plugin",
+    "description": "PV Redirects: single-round-trip WordPress redirects via one autoloaded map, with wildcards, WP-CLI management, and QPPR migration",
+    "type": "wordpress-plugin",
+    "license": "GPL-3.0-or-later",
+    "autoload": {
+        "psr-4": {
+            "PV\\Redirects\\": "src/",
+            "PV\\Redirects\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "phpstan": "phpstan analyse --memory-limit=512M",
+        "env:start": "wp-env start",
+        "env:debug": "wp-env start --xdebug=profile,trace,debug",
+        "env:stop": "wp-env stop",
+        "test": "npx --yes @wordpress/env run tests-cli --env-cwd=wp-content/plugins/pv-redirects-plugin vendor/bin/phpunit"
+    },
+    "authors": [
+        {
+            "name": "Spenser Hale",
+            "email": "opensource@spenserhale.dev",
+            "homepage": "https://www.spenserhale.com/"
+        }
+    ],
+    "config": {
+        "platform": {
+            "php": "8.2"
+        },
+        "sort-packages": true,
+        "allow-plugins": {
+            "phpstan/extension-installer": true
+        }
+    },
+    "require-dev": {
+        "phpstan/extension-installer": "^1.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpunit/phpunit": "^9.0",
+        "szepeviktor/phpstan-wordpress": "^2.0",
+        "wp-phpunit/wp-phpunit": "^6.7",
+        "yoast/phpunit-polyfills": "^4.0"
+    }
+}

@@ -1,0 +1,9 @@
+includes:
+    - ./phpstan.extension.neon
+
+parameters:
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+
+# Tests are deliberately not analysed: they extend WP_UnitTestCase, which has no
+# phpstan stubs at level 9. src/ (via phpstan.extension.neon) is the analysed surface.
