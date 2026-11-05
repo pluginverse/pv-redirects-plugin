@@ -42,7 +42,8 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
 - Case-insensitive by default (keys case-folded at build and match); `case_sensitive` flips both.
 - Wildcards: `*` = run of non-slash characters, a final `/*` = the entire remaining path,
   `*` in the destination is substituted with the matched text. Exact always beats wildcard; first
-  wildcard wins; `**` is supported only in trailing position.
+  wildcard wins; the wildcard pass tolerates a trailing-slash difference like exact keys do;
+  `**` is supported only in trailing position.
 - Destinations: absolute URLs pass through, `/path` gets the home prefix, numeric values become
   `home/?p=N`, anything else is relative to home. Incoming query string is preserved
   (`preserve_qs`): appended with `?` or merged with `&`.

@@ -165,7 +165,7 @@ final class RedirectHandler {
 	 *  1. exact hit including the query string (`/path/?q=1` form, QPPR parity)
 	 *  2. exact hit on the path
 	 *  3. exact hit on the path with the trailing slash toggled
-	 *  4. wildcard pass, in rule order (first match wins)
+	 *  4. wildcard pass in rule order (first match wins), also slash-tolerant
 	 *  5. miss → null, no redirect
 	 *
 	 * @param  Map  $map
@@ -202,7 +202,15 @@ final class RedirectHandler {
 			}
 		}
 
-		return Matcher::matchWildcard( $map['wildcards'], $key );
+		// Wildcards get the same trailing-slash tolerance as exact keys: try the path
+		// as typed, then with the trailing slash toggled (`/wp*` should catch `/wp-foo/`).
+		$match = Matcher::matchWildcard( $map['wildcards'], $key );
+
+		if ( $match === null && $toggled !== '' ) {
+			$match = Matcher::matchWildcard( $map['wildcards'], $toggled );
+		}
+
+		return $match;
 	}
 
 	/**

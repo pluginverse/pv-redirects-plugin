@@ -219,6 +219,24 @@ final class RedirectHandlerTest extends TestCase {
 		static::assertSame( $first, self::invokeHandler( 'matchPath', [ $map, '/old/a/', '' ] )['rule'] );
 	}
 
+	public function testMatchPathWildcardToleratesTrailingSlash(): void {
+		$wild = [ 'regex' => Matcher::compileWildcard( '/wp*' ), 'to' => '/captured/', 'status' => 301, 'src' => 'o' ];
+		$map  = self::makeMap( [], [ $wild ] );
+
+		$direct = self::invokeHandler( 'matchPath', [ $map, '/wp-foo', '' ] );
+
+		static::assertNotNull( $direct );
+		static::assertSame( $wild, $direct['rule'] );
+		static::assertSame( [ 's1' => '-foo' ], $direct['captures'] );
+
+		// Trailing-slash form must hit the same rule via the toggled retry.
+		$toggled_match = self::invokeHandler( 'matchPath', [ $map, '/wp-foo/', '' ] );
+
+		static::assertNotNull( $toggled_match );
+		static::assertSame( $wild, $toggled_match['rule'] );
+		static::assertSame( [ 's1' => '-foo' ], $toggled_match['captures'] );
+	}
+
 	public function testMatchPathMissReturnsNull(): void {
 		static::assertNull( self::invokeHandler( 'matchPath', [ self::makeMap(), '/nothing/', '' ] ) );
 	}
