@@ -5,50 +5,55 @@ namespace PV\Redirects\Tests;
 use InvalidArgumentException;
 use PV\Redirects\PostMetaStore;
 
+use function add_action;
+use function add_post_meta;
+use function delete_post_meta;
+use function get_option;
 use function get_post;
 use function get_post_meta;
+use function has_action;
 use function metadata_exists;
+use function remove_action;
 use function update_post_meta;
-use function wp_create_nonce;
-use function wp_get_post_revisions;
-use function wp_set_current_user;
 use function wp_update_post;
 
 /**
- * Per-post meta store tests: get/set/delete roundtrip, the savePost guards (autosave,
- * revision, caps, nonce) and activeRedirectPosts() filtering.
+ * Per-post meta store tests: get/set/delete roundtrip, the debounced meta-hook rebuild
+ * (added/updated/deleted_post_meta -> ONE rebuild at shutdown), the statusTransitioned()
+ * immediate rebuild on trash/untrash/publish, and activeRedirectPosts() filtering.
+ *
+ * The deferred tests invoke PostMetaStore::rebuildPendingMap() directly — the exact
+ * callback the shutdown hook fires — rather than do_action('shutdown'), which would also
+ * run core's buffer-flushing shutdown handlers inside PHPUnit.
  */
 final class PostMetaStoreTest extends TestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
 
-		unset( $_POST['pv_redirects_nonce'], $_POST[ PostMetaStore::META_TO ], $_POST[ PostMetaStore::META_STATUS ], $_POST[ PostMetaStore::META_ACTIVE ] );
+		// Flush any rebuild a previous test's meta write left pending, so the dirty flag
+		// and the map start clean every test.
+		PostMetaStore::rebuildPendingMap();
 	}
 
-	protected function tearDown(): void {
-		unset( $_POST['pv_redirects_nonce'], $_POST[ PostMetaStore::META_TO ], $_POST[ PostMetaStore::META_STATUS ], $_POST[ PostMetaStore::META_ACTIVE ] );
-		wp_set_current_user( 0 );
+	// ---------------------------------------------------------------- hook wiring
 
-		parent::tearDown();
-	}
+	public function testRebuildHooksAreWired(): void {
+		static::assertNotFalse( has_action( 'added_post_meta', '\PV\Redirects\PostMetaStore::metaUpdated' ) );
+		static::assertNotFalse( has_action( 'updated_post_meta', '\PV\Redirects\PostMetaStore::metaUpdated' ) );
+		static::assertNotFalse( has_action( 'deleted_post_meta', '\PV\Redirects\PostMetaStore::metaUpdated' ) );
+		static::assertNotFalse( has_action( 'transition_post_status', '\PV\Redirects\PostMetaStore::statusTransitioned' ) );
 
-	/**
-	 * Simulate a classic meta-box submission for PostMetaStore::savePost(). Call it with
-	 * the admin user already current so the nonce verifies.
-	 */
-	private function primeSavePostRequest( string $to, int $status, bool $active ): void {
-		$_POST['pv_redirects_nonce']          = wp_create_nonce( 'pv_redirects_post' );
-		$_POST[ PostMetaStore::META_TO ]      = $to;
-		$_POST[ PostMetaStore::META_STATUS ]  = (string) $status;
-		$_POST[ PostMetaStore::META_ACTIVE ]  = $active ? '1' : '0';
-	}
+		// The shutdown listener registers lazily with the first dirty mark.
+		$post_id = self::factory()->post->create();
+		update_post_meta( $post_id, PostMetaStore::META_TO, '/wired/' );
 
-	private function becomeAdmin(): int {
-		$admin_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
-		wp_set_current_user( $admin_id );
+		static::assertNotFalse(
+			has_action( 'shutdown', '\PV\Redirects\PostMetaStore::rebuildPendingMap' ),
+			'A meta write must schedule the debounced shutdown rebuild'
+		);
 
-		return $admin_id;
+		PostMetaStore::rebuildPendingMap();
 	}
 
 	// ---------------------------------------------------------------- get/set/delete
@@ -99,6 +104,133 @@ final class PostMetaStoreTest extends TestCase {
 		);
 	}
 
+	// ---------------------------------------------------------------- debounced meta hooks
+
+	public function testAddedPostMetaRebuildsAtShutdown(): void {
+		$post_id = self::factory()->post->create( [ 'post_name' => 'added-meta-post' ] );
+
+		// A first-time sidebar write fires added_post_meta (via add_post_meta).
+		add_post_meta( $post_id, PostMetaStore::META_TO, '/shutdown-target/' );
+		add_post_meta( $post_id, PostMetaStore::META_ACTIVE, '1' );
+
+		static::assertNull(
+			self::mapPostRule( $post_id ),
+			'The debounced rebuild must not have run before shutdown'
+		);
+
+		// The shutdown hook fires exactly this callback.
+		PostMetaStore::rebuildPendingMap();
+
+		static::assertSame(
+			[ 'to' => '/shutdown-target/', 'status' => 301 ],
+			self::mapPostRule( $post_id ),
+			'The debounced rebuild must index the post'
+		);
+	}
+
+	public function testDeletedPostMetaRebuildsAtShutdown(): void {
+		$post_id = self::factory()->post->create( [ 'post_name' => 'deleted-meta-post' ] );
+
+		PostMetaStore::set( $post_id, '/target/', 301, true );
+		static::assertNotNull( self::mapPostRule( $post_id ), 'Fixture: the row starts indexed' );
+
+		// Removing the redirect through the meta API (not the store) defers the rebuild.
+		delete_post_meta( $post_id, PostMetaStore::META_ACTIVE );
+
+		static::assertNotNull(
+			self::mapPostRule( $post_id ),
+			'The debounced rebuild must not have run before shutdown'
+		);
+
+		// The shutdown hook fires exactly this callback.
+		PostMetaStore::rebuildPendingMap();
+
+		static::assertNull(
+			self::mapPostRule( $post_id ),
+			'The shutdown rebuild must drop the deactivated post from the map'
+		);
+	}
+
+	public function testManyMetaWritesCostOneShutdownRebuild(): void {
+		$post_id = self::factory()->post->create( [ 'post_name' => 'debounce-post' ] );
+
+		PostMetaStore::set( $post_id, '/first/', 301, true );
+		$count_rebuilds = $this->countRebuilds();
+
+		// A sidebar save writes all three keys; every hook marks the same dirty flag.
+		update_post_meta( $post_id, PostMetaStore::META_TO, '/second/' );
+		update_post_meta( $post_id, PostMetaStore::META_STATUS, '302' );
+		update_post_meta( $post_id, PostMetaStore::META_ACTIVE, '1' );
+
+		PostMetaStore::rebuildPendingMap();
+
+		static::assertSame( 1, $count_rebuilds(), 'N meta writes must cost exactly one debounced rebuild' );
+		static::assertSame(
+			[ 'to' => '/second/', 'status' => 302 ],
+			self::mapPostRule( $post_id )
+		);
+	}
+
+	public function testSetClearsPendingShutdownRebuild(): void {
+		$post_id = self::factory()->post->create( [ 'post_name' => 'immediate-post' ] );
+
+		// set() writes through update_post_meta (hooks fire) but rebuilds immediately and
+		// clears the dirty flag: no further rebuild may fire at shutdown.
+		PostMetaStore::set( $post_id, '/immediate/', 301, true );
+		$count_rebuilds = $this->countRebuilds();
+
+		static::assertSame(
+			[ 'to' => '/immediate/', 'status' => 301 ],
+			self::mapPostRule( $post_id )
+		);
+
+		PostMetaStore::rebuildPendingMap();
+
+		static::assertSame( 0, $count_rebuilds(), 'An immediate rebuild must leave no pending shutdown rebuild' );
+	}
+
+	// ---------------------------------------------------------------- statusTransitioned
+
+	public function testTrashTransitionRebuildsImmediatelyForRedirectingPost(): void {
+		$post_id = self::factory()->post->create( [ 'post_name' => 'transition-post' ] );
+		PostMetaStore::set( $post_id, '/target/', 301, true );
+		static::assertNotNull( self::mapPostRule( $post_id ), 'Fixture: the row starts indexed' );
+
+		$count_rebuilds = $this->countRebuilds();
+
+		// Fires transition_post_status through core, which calls statusTransitioned().
+		wp_update_post( [ 'ID' => $post_id, 'post_status' => 'trash' ] );
+
+		// Trashed posts leave activeRedirectPosts() ('any' excludes trash), so the map
+		// must drop the post WITHOUT waiting for shutdown.
+		static::assertNull( self::mapPostRule( $post_id ) );
+		static::assertSame( 1, $count_rebuilds(), 'The transition must rebuild immediately' );
+	}
+
+	public function testStatusTransitionSkipsPostsWithoutRedirect(): void {
+		$post_id = self::factory()->post->create( [ 'post_name' => 'no-redirect-post' ] );
+
+		$count_rebuilds = $this->countRebuilds();
+
+		wp_update_post( [ 'ID' => $post_id, 'post_status' => 'trash' ] );
+
+		static::assertSame( 0, $count_rebuilds(), 'A post without a redirect must not trigger a rebuild' );
+	}
+
+	public function testStatusTransitionSkipsUnchangedStatus(): void {
+		$post_id = self::factory()->post->create( [ 'post_name' => 'same-status-post' ] );
+		PostMetaStore::set( $post_id, '/target/', 301, true );
+
+		$post = get_post( $post_id );
+		static::assertInstanceOf( \WP_Post::class, $post );
+
+		$count_rebuilds = $this->countRebuilds();
+
+		PostMetaStore::statusTransitioned( 'publish', 'publish', $post );
+
+		static::assertSame( 0, $count_rebuilds(), 'A same-status transition must not trigger a rebuild' );
+	}
+
 	// ---------------------------------------------------------------- activeRedirectPosts
 
 	public function testActiveRedirectPostsReturnsOnlyActiveWithDestination(): void {
@@ -117,115 +249,40 @@ final class PostMetaStoreTest extends TestCase {
 		);
 	}
 
-	// ---------------------------------------------------------------- savePost guards
+	// ---------------------------------------------------------------- helpers
 
-	public function testSavePostIgnoresRevisions(): void {
-		$post_id = self::factory()->post->create( [ 'post_content' => 'original' ] );
-		wp_update_post( [ 'ID' => $post_id, 'post_content' => 'changed' ] );
+	/**
+	 * The computed map's posts-index rule for one post, or null when the map is absent or
+	 * the post is not indexed. get_option() returns false (not an array) for an absent
+	 * map, so the raw subscript would warn — assert-friendly instead.
+	 *
+	 * @return mixed
+	 */
+	private static function mapPostRule( int $post_id ): mixed {
+		$map = get_option( 'pv_redirects_map' );
 
-		$revisions = wp_get_post_revisions( $post_id );
-
-		static::assertNotEmpty( $revisions, 'Fixture: the update must have produced a revision' );
-
-		$revision = array_shift( $revisions );
-
-		$this->becomeAdmin();
-		$this->primeSavePostRequest( '/should-not-persist/', 302, true );
-
-		PostMetaStore::savePost( $revision->ID, $revision );
-
-		static::assertFalse( metadata_exists( 'post', $post_id, PostMetaStore::META_TO ), 'The parent post must stay untouched' );
-		static::assertFalse( metadata_exists( 'post', $revision->ID, PostMetaStore::META_TO ) );
+		return is_array( $map ) ? ( $map['posts'][ $post_id ] ?? null ) : null;
 	}
 
-	public function testSavePostIgnoresAutosaves(): void {
-		$post_id   = self::factory()->post->create();
-		$author_id = (int) get_post( $post_id )->post_author;
+	/**
+	 * Install a counter on the pv/redirects/map_rebuilt action. Call the returned closure
+	 * (after the behavior under test ran) to read how many rebuilds fired and remove the
+	 * counter. Counts instead of comparing `built` timestamps: time() has one-second
+	 * granularity, so same-second rebuilds would be indistinguishable.
+	 *
+	 * @return callable(): int
+	 */
+	private function countRebuilds(): callable {
+		$count    = 0;
+		$listener = static function () use ( &$count ): void {
+			++$count;
+		};
+		add_action( 'pv/redirects/map_rebuilt', $listener, 10, 0 );
 
-		$autosave = self::factory()->post->create_and_get( [
-			'post_type'   => 'revision',
-			'post_parent' => $post_id,
-			'post_status' => 'inherit',
-			'post_name'   => $post_id . '-autosave',
-			'post_author' => $author_id,
-		] );
+		return static function () use ( &$count, $listener ): int {
+			remove_action( 'pv/redirects/map_rebuilt', $listener, 10 );
 
-		static::assertTrue( (bool) wp_is_post_autosave( $autosave->ID ), 'Fixture: the revision must register as an autosave' );
-
-		$this->becomeAdmin();
-		$this->primeSavePostRequest( '/should-not-persist/', 302, true );
-
-		PostMetaStore::savePost( $autosave->ID, $autosave );
-
-		static::assertFalse( metadata_exists( 'post', $post_id, PostMetaStore::META_TO ) );
-	}
-
-	public function testSavePostIgnoresMissingNonce(): void {
-		$post_id = self::factory()->post->create();
-
-		$this->becomeAdmin();
-		$_POST[ PostMetaStore::META_TO ]     = '/nope/';
-		$_POST[ PostMetaStore::META_STATUS ] = '302';
-		$_POST[ PostMetaStore::META_ACTIVE ] = '1';
-
-		PostMetaStore::savePost( $post_id, get_post( $post_id ) );
-
-		static::assertFalse( metadata_exists( 'post', $post_id, PostMetaStore::META_TO ) );
-	}
-
-	public function testSavePostIgnoresInvalidNonce(): void {
-		$post_id = self::factory()->post->create();
-
-		$this->becomeAdmin();
-		$_POST['pv_redirects_nonce']         = 'bogus';
-		$_POST[ PostMetaStore::META_TO ]     = '/nope/';
-		$_POST[ PostMetaStore::META_STATUS ] = '302';
-		$_POST[ PostMetaStore::META_ACTIVE ] = '1';
-
-		PostMetaStore::savePost( $post_id, get_post( $post_id ) );
-
-		static::assertFalse( metadata_exists( 'post', $post_id, PostMetaStore::META_TO ) );
-	}
-
-	public function testSavePostIgnoresUserWithoutCaps(): void {
-		$post_id = self::factory()->post->create();
-
-		wp_set_current_user( self::factory()->user->create( [ 'role' => 'subscriber' ] ) );
-		$this->primeSavePostRequest( '/nope/', 302, true );
-
-		PostMetaStore::savePost( $post_id, get_post( $post_id ) );
-
-		static::assertFalse( metadata_exists( 'post', $post_id, PostMetaStore::META_TO ) );
-	}
-
-	public function testSavePostPersistsWithValidNonceAndCaps(): void {
-		$post_id = self::factory()->post->create();
-
-		$this->becomeAdmin();
-		$this->primeSavePostRequest( '/posted-target/', 302, true );
-
-		PostMetaStore::savePost( $post_id, get_post( $post_id ) );
-
-		static::assertSame(
-			[ 'to' => '/posted-target/', 'status' => 302, 'active' => true ],
-			PostMetaStore::get( $post_id )
-		);
-	}
-
-	public function testSavePostEmptyDestinationRemovesMeta(): void {
-		$post_id = self::factory()->post->create();
-
-		PostMetaStore::set( $post_id, '/old/', 301, true );
-
-		$this->becomeAdmin();
-		$this->primeSavePostRequest( '', 301, false );
-
-		PostMetaStore::savePost( $post_id, get_post( $post_id ) );
-
-		static::assertFalse( metadata_exists( 'post', $post_id, PostMetaStore::META_TO ) );
-		static::assertSame(
-			[ 'to' => '', 'status' => 301, 'active' => false ],
-			PostMetaStore::get( $post_id )
-		);
+			return $count;
+		};
 	}
 }

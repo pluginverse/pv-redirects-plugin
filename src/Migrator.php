@@ -9,7 +9,6 @@ use function add_action;
 use function apply_filters;
 use function array_flip;
 use function array_key_exists;
-use function array_merge;
 use function ctype_digit;
 use function delete_option;
 use function delete_post_meta;
@@ -20,6 +19,7 @@ use function in_array;
 use function is_array;
 use function is_int;
 use function is_string;
+use function parse_url;
 use function preg_match;
 use function remove_action;
 use function sprintf;
@@ -39,8 +39,8 @@ use function update_post_meta;
  *
  * Writes bypass the store mutators' per-row rebuilds: one merged option write, direct
  * postmeta writes shaped exactly like PostMetaStore::set(), and a single final
- * RedirectMap::rebuild() on real runs (dry runs write nothing). The updated_post_meta
- * rebuild hook is detached while post meta is written so N posts cost one rebuild.
+ * RedirectMap::rebuild() on real runs (dry runs write nothing). The meta-write rebuild
+ * hooks are detached while post meta is written so N posts cost one rebuild.
  *
  * @phpstan-type QuickReport array{migrated: int, skipped_existing: int, dropped_meta: int}
  * @phpstan-type PostsReport array{migrated: int, skipped_existing: int, inactive_migrated: int, meta_type_downgraded: int, dropped_features: int}
@@ -52,6 +52,14 @@ use function update_post_meta;
 final class Migrator {
 
 	private const PV_OPTION = 'pv_redirects';
+
+	/**
+	 * The `_pv_redirect_*` meta hooks PostMetaStore::metaUpdated() is wired to; detached
+	 * while this migrator writes post meta so the final rebuild is the only one.
+	 *
+	 * @var list<string>
+	 */
+	private const REBUILD_HOOKS = [ 'added_post_meta', 'updated_post_meta', 'deleted_post_meta' ];
 
 	private const QPPR_REDIRECTS_OPTION      = 'quickppr_redirects';
 	private const QPPR_REDIRECTS_META_OPTION = 'quickppr_redirects_meta';
@@ -183,6 +191,19 @@ final class Migrator {
 						continue;
 					}
 
+					// Map keys are path-only, so a key carrying a URL scheme (mailto:…,
+					// https://…) can never match a request — skip it for manual review.
+					$key_scheme = parse_url( $key, PHP_URL_SCHEME );
+
+					if ( is_string( $key_scheme ) && $key_scheme !== '' ) {
+						$warnings[] = sprintf(
+							/* translators: %s: quick redirect request key. */
+							__( 'Skipped quick redirect "%1$s": its request key carries a URL scheme, and map keys are path-only, so it can never match a request — review it.', 'pv-redirects' ),
+							$key
+						);
+						continue;
+					}
+
 					$request = self::normalizeQuickKey( $key );
 
 					// Present in the PV store: previously migrated or manually created. Never
@@ -209,14 +230,19 @@ final class Migrator {
 
 		if ( ! $flags['skip_posts'] ) {
 			if ( ! $flags['dry_run'] ) {
-				remove_action( 'updated_post_meta', '\PV\Redirects\PostMetaStore::metaUpdated', 10 );
+				// Detach every `_pv_redirect_*` meta-write hook so N posts cost one rebuild.
+				foreach ( self::REBUILD_HOOKS as $hook ) {
+					remove_action( $hook, '\PV\Redirects\PostMetaStore::metaUpdated', 10 );
+				}
 			}
 
 			try {
 				self::migratePosts( $flags['dry_run'], $posts, $warnings, $deletePostIds );
 			} finally {
 				if ( ! $flags['dry_run'] ) {
-					add_action( 'updated_post_meta', '\PV\Redirects\PostMetaStore::metaUpdated', 10, 3 );
+					foreach ( self::REBUILD_HOOKS as $hook ) {
+						add_action( $hook, '\PV\Redirects\PostMetaStore::metaUpdated', 10, 3 );
+					}
 				}
 			}
 		}
@@ -227,7 +253,14 @@ final class Migrator {
 
 		if ( ! $flags['dry_run'] ) {
 			if ( $pendingOptionRows !== [] ) {
-				$merged   = array_merge( $pvRows, $pendingOptionRows );
+				// Key-preserving merge: array_merge() would renumber integer-like request
+				// keys (option storage can hold them), which would silently rewrite rows.
+				$merged = $pvRows;
+
+				foreach ( $pendingOptionRows as $request_key => $row ) {
+					$merged[ $request_key ] = $row;
+				}
+
 				$filtered = apply_filters( 'pv/redirects/option_store_pre_save', $merged );
 
 				update_option( self::PV_OPTION, is_array( $filtered ) ? $filtered : $merged, true );

@@ -12,10 +12,8 @@
  * - Post meta: _pv_redirect_to, _pv_redirect_status, _pv_redirect_active
  *   across all posts, via one $wpdb query on the postmeta table.
  *
- * Multisite-safe without a blog loop: the postmeta and options tables are
- * site-scoped, so the queries below hit the current site only, and WordPress
- * invokes this file for each site the plugin was active on — the same way
- * core uninstallers behave.
+ * Multisite: the options and postmeta tables are site-scoped, so every
+ * site in the network is switched to and cleaned in turn.
  *
  * @package pv-redirects
  */
@@ -24,20 +22,37 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
     exit;
 }
 
-global $wpdb;
+/**
+ * Delete the current site's PV Redirects data: options plus per-post
+ * redirect meta. Both tables are site-scoped, so only the switched-to
+ * site is touched.
+ */
+function pv_redirects_delete_site_data(): void {
+    global $wpdb;
 
-// Options: quick redirects, the computed map, and settings.
-delete_option( 'pv_redirects' );
-delete_option( 'pv_redirects_map' );
-delete_option( 'pv_redirects_settings' );
+    // Options: quick redirects, the computed map, and settings.
+    delete_option( 'pv_redirects' );
+    delete_option( 'pv_redirects_map' );
+    delete_option( 'pv_redirects_settings' );
 
-// Per-post redirect meta, across all posts and post types, in one query.
-$meta_keys    = array( '_pv_redirect_to', '_pv_redirect_status', '_pv_redirect_active' );
-$placeholders = implode( ', ', array_fill( 0, count( $meta_keys ), '%s' ) );
+    // Per-post redirect meta, across all posts and post types, in one query.
+    $meta_keys    = array( '_pv_redirect_to', '_pv_redirect_status', '_pv_redirect_active' );
+    $placeholders = implode( ', ', array_fill( 0, count( $meta_keys ), '%s' ) );
 
-$wpdb->query(
-    $wpdb->prepare(
-        "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ( {$placeholders} )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $meta_keys
-    )
-);
+    $wpdb->query(
+        $wpdb->prepare(
+            "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ( {$placeholders} )", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $meta_keys
+        )
+    );
+}
+
+if ( is_multisite() ) {
+    foreach ( get_sites( array( 'fields' => 'ids', 'number' => 0 ) ) as $site_id ) {
+        switch_to_blog( (int) $site_id );
+        pv_redirects_delete_site_data();
+        restore_current_blog();
+    }
+} else {
+    pv_redirects_delete_site_data();
+}

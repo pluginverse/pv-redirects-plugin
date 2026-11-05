@@ -31,7 +31,7 @@ final class RedirectHandlerTest extends TestCase {
 			'REQUEST_URI' => $_SERVER['REQUEST_URI'] ?? null,
 			'HTTP_HOST'   => $_SERVER['HTTP_HOST'] ?? null,
 		];
-		unset( $_GET['action'] );
+		unset( $_GET['action'], $_GET['rest_route'] );
 	}
 
 	protected function tearDown(): void {
@@ -43,7 +43,7 @@ final class RedirectHandlerTest extends TestCase {
 			}
 		}
 
-		unset( $_GET['action'] );
+		unset( $_GET['action'], $_GET['rest_route'] );
 
 		parent::tearDown();
 	}
@@ -278,6 +278,47 @@ final class RedirectHandlerTest extends TestCase {
 		}
 	}
 
+	public function testInitSkipsWpJsonPathPrefix(): void {
+		// REST_REQUEST is not defined until parse_request (after init), so the /wp-json/
+		// path prefix is the guard: a '/wp*' wildcard must never 301 a REST route.
+		$this->seedMap( self::makeMap( [], [
+			[ 'regex' => Matcher::compileWildcard( '/wp*' ), 'to' => '/caught/', 'status' => 301, 'src' => 'o' ],
+		] ) );
+		$_SERVER['REQUEST_URI'] = '/wp-json/wp/v2/posts';
+		$_SERVER['HTTP_HOST']   = 'localhost';
+
+		$probe   = [];
+		$cleanup = $this->trapSend( $probe );
+		try {
+			RedirectHandler::init();
+
+			static::assertSame( [], $probe, 'A /wp-json/ request must never match' );
+		} finally {
+			$cleanup();
+		}
+	}
+
+	public function testInitSkipsRestRouteQueryParam(): void {
+		// ?rest_route= requests bypass rewrite parsing, so a plain-path rule would still
+		// match — the rest_route param check is the guard for that shape.
+		$this->seedMap( self::makeMap( [ '/old/' => [ 'to' => '/new/', 'status' => 301, 'src' => 'o' ] ] ) );
+		$_SERVER['REQUEST_URI'] = '/old/';
+		$_SERVER['HTTP_HOST']   = 'localhost';
+		$_GET['rest_route']     = '/wp/v2/posts';
+
+		$probe   = [];
+		$cleanup = $this->trapSend( $probe );
+		try {
+			RedirectHandler::init();
+
+			static::assertSame( [], $probe, 'A ?rest_route= request must never match' );
+		} finally {
+			$cleanup();
+
+			unset( $_GET['rest_route'] );
+		}
+	}
+
 	// ---------------------------------------------------------------- init (send path)
 
 	public function testInitSendsExactMatchWithResolvedDestinationAndQuery(): void {
@@ -370,6 +411,26 @@ final class RedirectHandlerTest extends TestCase {
 			'http://localhost/new-blog/2024/x',
 			RedirectHandler::canonical( 'orig', 'http://localhost/old-blog/2024/x' )
 		);
+	}
+
+	public function testCanonicalStripsHomeSubdirectoryFromRequestedUrl(): void {
+		$home    = get_option( 'home' );
+		$siteurl = get_option( 'siteurl' );
+		update_option( 'home', 'http://localhost/blog' );
+		update_option( 'siteurl', 'http://localhost/blog' );
+
+		try {
+			$this->seedMap( self::makeMap( [ '/old/' => [ 'to' => '/new/', 'status' => 301, 'src' => 'o' ] ] ) );
+
+			static::assertSame(
+				'http://localhost/blog/new/',
+				RedirectHandler::canonical( 'orig', 'http://localhost/blog/old/' ),
+				'The requested URL must be home-stripped like a live request, so subdirectory keys match'
+			);
+		} finally {
+			update_option( 'home', $home );
+			update_option( 'siteurl', $siteurl );
+		}
 	}
 
 	public function testCanonicalPassesFalseAndNullThroughEvenOnMatch(): void {

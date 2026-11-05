@@ -24,12 +24,20 @@ const META_ACTIVE = '_pv_redirect_active';
 
 function RedirectPanel() {
 	const { meta, isViewable } = useSelect( ( select ) => {
-		const postType = select( 'core/editor' ).getCurrentPostType();
+		// The Site Editor screen has no core/editor store; PHP gates the script enqueue
+		// (Admin::enqueueSidebar only loads it on post screens), this cheap guard is the
+		// second line: bail so the panel renders null instead of crashing.
+		const editor = select( 'core/editor' );
+
+		if ( ! editor?.getCurrentPostId ) {
+			return { meta: {}, isViewable: false };
+		}
+
+		const postType = editor.getCurrentPostType();
 		const typeDefinition = select( 'core' ).getPostType( postType );
 
 		return {
-			meta:
-				select( 'core/editor' ).getEditedPostAttribute( 'meta' ) ?? {},
+			meta: editor.getEditedPostAttribute( 'meta' ) ?? {},
 			// Only public (viewable) post types carry the registered meta; non-viewable
 			// types have no edit screen where the meta would survive a save.
 			isViewable:

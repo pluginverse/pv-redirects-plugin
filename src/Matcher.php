@@ -17,6 +17,7 @@ use function str_contains;
 use function str_starts_with;
 use function strtolower;
 use function substr;
+use function substr_count;
 use function strpos;
 
 /**
@@ -30,6 +31,13 @@ use function strpos;
  * @phpstan-type Captures array<string, string>
  */
 final class Matcher {
+
+	/**
+	 * Wildcard tokens allowed per pattern (shared with OptionStore::assertValidRequestKey,
+	 * which rejects past the cap): each token becomes a regex capture group, so the cap
+	 * bounds compiled-regex complexity (ReDoS guard).
+	 */
+	public const MAX_WILDCARD_STARS = 8;
 
 	/**
 	 * Normalize a path-only key: ensure a leading '/' and case-fold when matching is
@@ -64,6 +72,13 @@ final class Matcher {
 	 * sensible paths.
 	 */
 	public static function compileWildcard( string $pattern ): string {
+		// Defensive cap for the migrator/legacy data path (patterns that skipped
+		// OptionStore::assertValidRequestKey): compile to a regex that can never match
+		// instead of an ever-wilder capture chain.
+		if ( substr_count( $pattern, '*' ) > self::MAX_WILDCARD_STARS ) {
+			return '#^(?!)$#';
+		}
+
 		$segments = explode( '/', str_starts_with( $pattern, '/' ) ? $pattern : '/'.$pattern );
 		$last     = count( $segments ) - 1;
 		$captures = 0;

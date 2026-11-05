@@ -8,11 +8,9 @@ use function do_action;
 use function get_option;
 use function get_permalink;
 use function home_url;
-use function in_array;
 use function is_array;
 use function is_string;
 use function parse_url;
-use function sprintf;
 use function str_contains;
 use function strpos;
 use function str_starts_with;
@@ -38,9 +36,6 @@ final class RedirectMap {
 	private const OPTION = 'pv_redirects_map';
 
 	private const SCHEMA_VERSION = 1;
-
-	/** @var list<string> autoload values that keep the row in the alloptions load */
-	private const AUTOLOAD_VALUES = [ 'yes', 'on', 'auto-on' ];
 
 	/**
 	 * Recompute the map from `pv_redirects` + active per-post meta + settings and persist it.
@@ -184,29 +179,18 @@ final class RedirectMap {
 	}
 
 	/**
-	 * Persist the map with autoload=yes. update_option() cannot flip the autoload flag on an
-	 * existing row on older supported WP versions, so when the row is currently stored as
-	 * non-autoloaded it is deleted and re-added (autoloaded) before the update. Option_name
-	 * is our own constant, so the lookup SQL needs no escaping.
+	 * Persist the map with autoload=yes. The plugin floor is WP 6.4, where update_option()'s
+	 * third parameter sets the autoload flag directly — on insert AND on update of an
+	 * existing row — so the old SELECT/delete/re-add dance (and its $wpdb lookup) is gone:
+	 * a fresh option is added autoloaded, an existing one is updated with autoload=yes.
 	 *
 	 * @param  Map  $map
 	 */
 	private static function store( array $map ): void {
-		global $wpdb;
-
-		$autoload = $wpdb->get_var(
-			sprintf( 'SELECT autoload FROM %s WHERE option_name = \'%s\'', $wpdb->options, self::OPTION )
-		);
-
-		if ( $autoload === null ) {
+		if ( get_option( self::OPTION, false ) === false ) {
 			add_option( self::OPTION, $map, '', true );
 
 			return;
-		}
-
-		if ( ! in_array( $autoload, self::AUTOLOAD_VALUES, true ) ) {
-			delete_option( self::OPTION );
-			add_option( self::OPTION, '', '', true );
 		}
 
 		update_option( self::OPTION, $map, true );

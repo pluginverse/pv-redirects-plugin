@@ -118,13 +118,17 @@ final class RedirectMapTest extends TestCase {
 			"UPDATE {$wpdb->options} SET autoload = 'off' WHERE option_name = 'pv_redirects_map'"
 		);
 
-		RedirectMap::rebuild();
+		// update_option() only touches autoload on an actual value write (an unchanged
+		// value short-circuits), so the re-enforcement needs a genuinely different map:
+		// adding an option row changes the rebuilt map deterministically.
+		OptionStore::set( '/force-write/', '/target/', 301 );
 
 		$autoload = $wpdb->get_var(
 			"SELECT autoload FROM {$wpdb->options} WHERE option_name = 'pv_redirects_map'"
 		);
 
-		static::assertContains( $autoload, [ 'yes', 'on', 'auto-on' ], 'A non-autoloaded row must be re-added autoloaded' );
+		static::assertContains( $autoload, [ 'yes', 'on', 'auto-on' ], 'A non-autoloaded row must be re-stored autoloaded' );
+		static::assertArrayHasKey( 'pv_redirects_map', wp_load_alloptions() );
 	}
 
 	public function testGetReturnsEmptyOnVersionMismatch(): void {

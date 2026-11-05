@@ -7,6 +7,7 @@ use PV\Redirects\OptionStore;
 
 use function delete_option;
 use function get_option;
+use function str_repeat;
 use function update_option;
 
 /**
@@ -47,6 +48,35 @@ final class OptionStoreTest extends TestCase {
 		$this->expectExceptionMessage( '301, 302, 307, 308' );
 
 		OptionStore::set( '/x/', '/y/', 200 );
+	}
+
+	public function testSetRejectsRequestWithTooManyWildcards(): void {
+		// Eight '*' is the cap (Matcher::MAX_WILDCARD_STARS); nine must throw so a
+		// pathological pattern never compiles into the map.
+		$this->expectException( InvalidArgumentException::class );
+		$this->expectExceptionMessage( 'wildcard pattern may contain at most 8' );
+
+		OptionStore::set( '/a/*/*/*/*/*/*/*/*/*', '/y/', 301 );
+	}
+
+	public function testSetAcceptsRequestAtWildcardCap(): void {
+		OptionStore::set( '/a/*/*/*/*/*/*/*/*', '/y/', 301 );
+
+		static::assertSame( [ 'to' => '/y/', 'status' => 301 ], OptionStore::get( '/a/*/*/*/*/*/*/*/*' ) );
+	}
+
+	public function testSetRejectsDestinationWithControlCharacters(): void {
+		$this->expectException( InvalidArgumentException::class );
+		$this->expectExceptionMessage( 'control characters' );
+
+		OptionStore::set( '/x/', "/y/\r\nHeader: injected", 301 );
+	}
+
+	public function testSetRejectsDestinationLongerThanCap(): void {
+		$this->expectException( InvalidArgumentException::class );
+		$this->expectExceptionMessage( 'longer than 2048' );
+
+		OptionStore::set( '/x/', '/'.str_repeat( 'a', 2048 ), 301 );
 	}
 
 	public function testDeleteMissingReturnsFalse(): void {

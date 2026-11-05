@@ -4,10 +4,12 @@ namespace PV\Redirects;
 
 use function __;
 use function add_menu_page;
+use function apply_filters;
 use function current_user_can;
 use function esc_html__;
 use function file_exists;
 use function filemtime;
+use function get_current_screen;
 use function get_post_types;
 use function in_array;
 use function printf;
@@ -66,9 +68,18 @@ final class Admin {
 	 * `_pv_redirect_*` meta keys over REST for every public post type, so the editor
 	 * sidebar can read and write them through the block editor's meta machinery
 	 * (underscore-prefixed meta is invisible to REST until registered).
+	 *
+	 * Writing a redirect points visitors at an arbitrary URL, so the auth callback demands
+	 * `manage_options` — NOT edit_post, which would let Authors redirect their own posts
+	 * to external URLs. Sites that want QPPR-style author access can lower the capability
+	 * via the `pv/redirects/post_meta_capability` filter (Admin::enqueueSidebar gates the
+	 * UI with the same filter).
 	 */
 	public static function registerMeta(): void {
-		$auth_callback = static fn ( bool $allowed, string $meta_key, int $post_id ): bool => current_user_can( 'edit_post', $post_id );
+		$auth_callback = static fn ( bool $allowed, string $meta_key, int $post_id ): bool => current_user_can(
+			apply_filters( 'pv/redirects/post_meta_capability', 'manage_options' ),
+			$post_id
+		);
 
 		foreach ( get_post_types( [ 'public' => true ], 'names' ) as $post_type ) {
 			register_post_meta(
@@ -170,9 +181,22 @@ final class Admin {
 	}
 
 	/**
-	 * `enqueue_block_editor_assets` hook: the per-post redirect sidebar panel.
+	 * `enqueue_block_editor_assets` hook: the per-post redirect sidebar panel. Only the
+	 * block editor's post screen loads it — the Site Editor screen has no `core/editor`
+	 * store, so the panel would crash there — and only users who pass the same filterable
+	 * capability the meta auth callback enforces.
 	 */
 	public static function enqueueSidebar(): void {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+		if ( $screen === null || $screen->base !== 'post' || ! $screen->is_block_editor ) {
+			return;
+		}
+
+		if ( ! current_user_can( apply_filters( 'pv/redirects/post_meta_capability', 'manage_options' ) ) ) {
+			return;
+		}
+
 		$file = PV_REDIRECTS_PATH.'build/sidebar.js';
 
 		if ( ! file_exists( $file ) ) {

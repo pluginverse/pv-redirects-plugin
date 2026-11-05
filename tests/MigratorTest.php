@@ -379,6 +379,55 @@ final class MigratorTest extends TestCase {
 		static::assertSame( [ '/old-blog/*' => [ 'to' => '/new-blog/*', 'status' => 301 ] ], get_option( 'pv_redirects' ) );
 	}
 
+	// ---------------------------------------------------------------- quick row guards
+
+	public function testSchemeCarryingQuickKeysAreSkippedWithReviewWarning(): void {
+		update_option( 'quickppr_redirects', [
+			'/path-only/'              => '/target/',
+			'mailto:legacy@example.com' => '/never-matches/',
+			'https://legacy.example/x' => '/also-never-matches/',
+		] );
+
+		$report = Migrator::migrate();
+
+		static::assertSame( 1, $report['quick']['migrated'], 'Only the path-only key may migrate' );
+		static::assertSame(
+			[ '/path-only/' => [ 'to' => '/target/', 'status' => 301 ] ],
+			get_option( 'pv_redirects' ),
+			'Scheme-carrying keys can never match a path-only map key, so they must be skipped'
+		);
+
+		$warnings = self::warnings( $report );
+
+		static::assertStringContainsString( 'mailto:legacy@example.com', $warnings );
+		static::assertStringContainsString( 'https://legacy.example/x', $warnings );
+		static::assertStringContainsString( 'scheme', $warnings );
+	}
+
+	public function testMergedOptionRowsKeepIntegerLikeKeys(): void {
+		// Option storage can carry integer-like keys (numeric request keys written outside
+		// the store); array_merge() would renumber them to 0 and silently rewrite rows.
+		update_option( 'pv_redirects', [
+			5     => [ 'to' => '/numeric-key-target/', 'status' => 301 ],
+			'/a/' => [ 'to' => '/a-target/', 'status' => 302 ],
+		] );
+		update_option( 'quickppr_redirects', [ '/legacy/' => '/new-home/' ] );
+
+		Migrator::migrate();
+
+		$stored = get_option( 'pv_redirects' );
+
+		static::assertSame(
+			[
+				5         => [ 'to' => '/numeric-key-target/', 'status' => 301 ],
+				'/a/'     => [ 'to' => '/a-target/', 'status' => 302 ],
+				'/legacy/' => [ 'to' => '/new-home/', 'status' => 301 ],
+			],
+			$stored,
+			'The merge must preserve integer-like keys instead of renumbering them'
+		);
+	}
+
 	// ---------------------------------------------------------------- empty state
 
 	public function testEmptySourceProducesAnAllZeroReport(): void {

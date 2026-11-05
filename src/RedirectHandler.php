@@ -38,7 +38,18 @@ final class RedirectHandler {
 	 * `init` hook, priority 1: match the current request against the map and redirect on hit.
 	 */
 	public static function init(): void {
-		if ( is_admin() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+		$rest_route = $_GET['rest_route'] ?? '';
+
+		// REST_REQUEST is only defined at parse_request — AFTER init — so it cannot guard
+		// this hook: a wildcard like '/wp*' would 301 /wp-json/… and break REST sitewide.
+		// The rest_route query param covers ?rest_route= requests; the /wp-json/ prefix
+		// check below covers plain-permalink REST requests.
+		if (
+			is_admin()
+			|| ( is_string( $rest_route ) && $rest_route !== '' )
+			|| wp_doing_cron()
+			|| ( defined( 'WP_CLI' ) && WP_CLI )
+		) {
 			return;
 		}
 
@@ -53,6 +64,10 @@ final class RedirectHandler {
 		}
 
 		[ $path, $query ] = self::currentRequest();
+
+		if ( str_starts_with( $path, '/wp-json/' ) ) {
+			return;
+		}
 
 		$match = self::matchPath( $map, $path, $query );
 
@@ -87,8 +102,9 @@ final class RedirectHandler {
 			return $redirect_url;
 		}
 
-		$path  = (string) parse_url( $requested_url, PHP_URL_PATH );
-		$query = (string) parse_url( $requested_url, PHP_URL_QUERY );
+		// $requested_url is a full URL: home-strip and normalize it exactly like a live
+		// request, so subdirectory homes and proxy-scheme mismatches match the same keys.
+		[ $path, $query ] = self::normalizeRequestedUrl( $requested_url );
 
 		if ( $path === '' ) {
 			return $redirect_url;
@@ -233,9 +249,7 @@ final class RedirectHandler {
 	}
 
 	/**
-	 * Current request as [path, raw query string], with the home URL stripped from the path
-	 * — QPPR's "full address str_replace home_url" approach — plus a scheme/host-mismatch
-	 * fallback (proxy https) and a home subdirectory path strip so keys are site-relative.
+	 * Current request as [path, raw query string], via normalizeRequestedUrl().
 	 *
 	 * @return array{string, string}
 	 */
@@ -244,7 +258,20 @@ final class RedirectHandler {
 		$host   = isset( $_SERVER['HTTP_HOST'] ) && is_string( $_SERVER['HTTP_HOST'] ) ? $_SERVER['HTTP_HOST'] : '';
 		$scheme = is_ssl() ? 'https://' : 'http://';
 
-		$path = str_replace( home_url(), '', $scheme.$host.$uri );
+		return self::normalizeRequestedUrl( $scheme.$host.$uri );
+	}
+
+	/**
+	 * One URL as [path, raw query string], with the home URL stripped from the path —
+	 * QPPR's "full address str_replace home_url" approach — plus a scheme/host-mismatch
+	 * fallback (proxy https) and a home subdirectory path strip so keys are site-relative.
+	 * Shared by the live request path (currentRequest) and the canonical guard, which
+	 * receives $requested_url as a full URL.
+	 *
+	 * @return array{string, string}
+	 */
+	private static function normalizeRequestedUrl( string $url ): array {
+		$path = str_replace( home_url(), '', $url );
 
 		if ( preg_match( '#^https?://[^/]*(?P<rest>.*)$#i', $path, $matches ) === 1 ) {
 			$path = $matches['rest'];

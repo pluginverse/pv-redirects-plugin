@@ -83,10 +83,15 @@ add_action( 'init', '\PV\Redirects\RedirectHandler::init', 1, 0 );
 add_filter( 'redirect_canonical', '\PV\Redirects\RedirectHandler::canonical', 10, 2 );
 add_action( 'template_redirect', '\PV\Redirects\RedirectHandler::templateRedirect', 1, 0 );
 
-// Map maintenance: store mutations rebuild internally; save_post covers the classic meta box
-// (nonce-bearing) path and updated_post_meta covers REST/meta writes that bypass it.
-add_action( 'save_post', '\PV\Redirects\PostMetaStore::savePost', 10, 2 );
+// Map maintenance: store mutations rebuild internally. The meta hooks catch editor
+// sidebar/REST/programmatic writes that bypass the stores — they debounce to ONE rebuild
+// at shutdown (first-time writes fire added_post_meta, deletions deleted_post_meta).
+// transition_post_status covers trash/untrash/publish, which fire no meta hooks, and
+// rebuilds immediately. CLI, REST and the stores themselves always rebuild immediately.
+add_action( 'added_post_meta', '\PV\Redirects\PostMetaStore::metaUpdated', 10, 3 );
 add_action( 'updated_post_meta', '\PV\Redirects\PostMetaStore::metaUpdated', 10, 3 );
+add_action( 'deleted_post_meta', '\PV\Redirects\PostMetaStore::metaUpdated', 10, 3 );
+add_action( 'transition_post_status', '\PV\Redirects\PostMetaStore::statusTransitioned', 10, 3 );
 
 // REST API (backs the admin app).
 add_action( 'rest_api_init', '\PV\Redirects\RestController::registerRoutes' );

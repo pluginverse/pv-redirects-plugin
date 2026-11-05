@@ -10,11 +10,13 @@ use WP_REST_Server;
 
 use function __;
 use function current_user_can;
+use function in_array;
 use function is_array;
 use function is_int;
 use function is_string;
 use function rawurldecode;
 use function register_rest_route;
+use function sprintf;
 
 /**
  * REST API backing the admin app: namespace `pv-redirects/v1`, `manage_options` on every
@@ -247,22 +249,21 @@ final class RestController {
 	}
 
 	/**
-	 * Create/update one redirect row (a bad status becomes a 400 pv_redirects_invalid_status
-	 * WP_Error).
+	 * Create/update one redirect row. Each validation failure maps to its own 400
+	 * pv_redirects_* code: invalid_status, invalid_request (wildcard cap), or
+	 * invalid_destination (control characters / length).
 	 */
 	private static function upsert( string $request_key, WP_REST_Request $request, int $status_code ): WP_REST_Response|WP_Error {
 		$to     = self::stringParam( $request, 'to' );
 		$status = self::intParam( $request, 'status', 0 );
 
-		try {
-			OptionStore::set( $request_key, $to, $status );
-		} catch ( InvalidArgumentException ) {
-			return self::error(
-				'pv_redirects_invalid_status',
-				__( 'Invalid redirect status; expected one of: 301, 302, 307, 308.', 'pv-redirects' ),
-				400
-			);
+		$error = self::upsertValidationError( $request_key, $to, $status );
+
+		if ( $error !== null ) {
+			return $error;
 		}
+
+		OptionStore::set( $request_key, $to, $status );
 
 		$row = OptionStore::get( $request_key ) ?? [ 'to' => $to, 'status' => $status ];
 
@@ -277,6 +278,47 @@ final class RestController {
 			],
 			$status_code
 		);
+	}
+
+	/**
+	 * Validate one create/update payload; null when it passes. The checks delegate to
+	 * OptionStore (the same rules every entry point enforces), and each failure mode gets
+	 * its own pv_redirects_* code so REST clients can distinguish them.
+	 */
+	private static function upsertValidationError( string $request_key, string $to, int $status ): ?WP_Error {
+		if ( ! in_array( $status, OptionStore::STATUSES, true ) ) {
+			return self::error(
+				'pv_redirects_invalid_status',
+				__( 'Invalid redirect status; expected one of: 301, 302, 307, 308.', 'pv-redirects' ),
+				400
+			);
+		}
+
+		try {
+			OptionStore::assertValidRequestKey( $request_key );
+		} catch ( InvalidArgumentException ) {
+			return self::error(
+				'pv_redirects_invalid_request',
+				sprintf(
+					/* translators: %d: maximum number of "*" wildcards. */
+					__( 'Invalid redirect request; a wildcard pattern may contain at most %1$d "*".', 'pv-redirects' ),
+					Matcher::MAX_WILDCARD_STARS
+				),
+				400
+			);
+		}
+
+		try {
+			OptionStore::assertValidDestination( $to );
+		} catch ( InvalidArgumentException ) {
+			return self::error(
+				'pv_redirects_invalid_destination',
+				__( 'Invalid redirect destination; control characters and destinations longer than 2048 characters are not allowed.', 'pv-redirects' ),
+				400
+			);
+		}
+
+		return null;
 	}
 
 	/**

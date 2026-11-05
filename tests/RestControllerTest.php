@@ -135,6 +135,49 @@ final class RestControllerTest extends TestCase {
 		static::assertSame( [], RedirectMap::get()['exact'] ?? [], 'A rejected create must not touch the map' );
 	}
 
+	public function testCreateTooManyWildcardsReturnsInvalidRequestError(): void {
+		$this->assertErrorResponse(
+			$this->dispatch( WP_REST_Server::CREATABLE, '/pv-redirects/v1/redirects', [
+				'request' => '/a/*/*/*/*/*/*/*/*/*',
+				'to'      => '/y',
+				'status'  => 301,
+			] ),
+			'pv_redirects_invalid_request',
+			400
+		);
+
+		static::assertNull( OptionStore::get( '/a/*/*/*/*/*/*/*/*/*' ), 'A rejected create must not store a row' );
+	}
+
+	public function testUpdateTooManyWildcardsReturnsInvalidRequestError(): void {
+		OptionStore::set( '/old', '/a', 301 );
+
+		$this->assertErrorResponse(
+			$this->dispatch( 'PUT', '/pv-redirects/v1/redirects/old', [
+				// Route-captured keys arrive percent-encoded; nine '*' exceeds the cap either way.
+				'to'     => '/b',
+				'status' => 301,
+				'request' => '/a/*/*/*/*/*/*/*/*/*',
+			] ),
+			'pv_redirects_invalid_request',
+			400
+		);
+	}
+
+	public function testCreateControlCharacterDestinationReturnsInvalidDestinationError(): void {
+		$this->assertErrorResponse(
+			$this->dispatch( WP_REST_Server::CREATABLE, '/pv-redirects/v1/redirects', [
+				'request' => '/x',
+				'to'      => "/y\r\nX-Injected: yes",
+				'status'  => 301,
+			] ),
+			'pv_redirects_invalid_destination',
+			400
+		);
+
+		static::assertNull( OptionStore::get( '/x' ), 'A rejected create must not store a row' );
+	}
+
 	// ---------------------------------------------------------------- get
 
 	public function testGetReturnsStoredRow(): void {
