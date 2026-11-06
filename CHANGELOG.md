@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Documentation
 
 - Include the full GPL-3.0-or-later license and standardize licensing metadata, replacing the ambiguous custom additional-permission paragraph.
+- Add WordPress.org readme, listing banners/icons/overview, real admin/editor screenshots, and ZIP/Composer installation instructions.
 
 ### Added
 

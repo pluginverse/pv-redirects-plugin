@@ -23,11 +23,33 @@ Requires PHP 8.2+ and WordPress 6.4+.
 
 ### Installation
 
-   ```sh
-   composer require spenserhale/pv-redirects-plugin
-   ```
+Download the plugin ZIP asset from a [GitHub release](https://github.com/pluginverse/pv-redirects-plugin/releases), then upload it under **Plugins → Add New → Upload Plugin** and activate it. Releases and the first version tag will be available after publication.
 
-Or clone the repository into `wp-content/plugins/pv-redirects` and activate **PV Redirects** (wp.org listing pending).
+For Composer-managed sites, add the Git repository as a VCS source in the **consumer project's** `composer.json`. This example places PV Redirects in `wp-content/plugins/pv-redirects/` and explicitly permits the installer plugin:
+
+```json
+{
+  "repositories": [
+    { "type": "vcs", "url": "https://github.com/pluginverse/pv-redirects-plugin.git" }
+  ],
+  "require": {
+    "composer/installers": "^2.0",
+    "spenserhale/pv-redirects-plugin": "^1.0"
+  },
+  "config": {
+    "allow-plugins": { "composer/installers": true }
+  },
+  "extra": {
+    "installer-paths": { "wp-content/plugins/pv-redirects/": ["spenserhale/pv-redirects-plugin"] }
+  }
+}
+```
+
+Run `composer install` after the `v1.0.0` tag is published. Adjust the installer path to match your site. This VCS setup does not require Packagist registration.
+
+### Source and builds
+
+The [public source repository](https://github.com/pluginverse/pv-redirects-plugin) includes committed production admin bundles. To reproduce them from the lockfile, run `npm ci` followed by `npm run build`. See the [release guide](docs/guides/releasing.md) for packaging and verification.
 
 #### Configuration
 
@@ -155,7 +177,8 @@ From Quick Page/Post Redirect (QPPR):
    # 2. Migrate (copy-on-migrate; QPPR data stays in place until you are ready).
    wp pv-redirects migrate
 
-   # 3. Once verified, remove the QPPR data (then deactivate QPPR).
+   # 3. Verify the migrated redirects, then deactivate QPPR to avoid competing redirects.
+   # Optional: remove copied QPPR data only after taking a backup.
    wp pv-redirects migrate --delete-source
    ```
 
