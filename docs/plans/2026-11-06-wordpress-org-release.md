@@ -42,6 +42,7 @@ The runner-up, automatically deploying every new tag directly to SVN, loses beca
 - D1, `docs/specs/redirects.md`: migration is available in the standalone production package without Composer's autoloader.
 - D2, new `docs/specs/distribution.md`: version/tag validation, ZIP contents, Composer requirements, and manually dispatched environment-gated WordPress.org publication as described above.
 - D3, distribution: `.wordpress-org/` contains directory assets excluded from the installable package; numbered screenshots match readme captions.
+- D4, redirects: collection PUT/DELETE accepts the exact request key in JSON data so admin edits/deletes work when the web server rejects encoded slashes. Existing item routes remain supported.
 
 ## Docs impact
 
@@ -53,6 +54,7 @@ The runner-up, automatically deploying every new tag directly to SVN, loses beca
 ## Decisions
 
 - [0007: Publish versioned archives with gated WordPress.org deployment](../decisions/0007-versioned-release-archives.md).
+- [0008: Send redirect mutation keys in JSON bodies](../decisions/0008-redirect-keys-in-json.md).
 
 ## Tasks
 
@@ -101,6 +103,17 @@ Coordinator commits each task; implementers never mutate git state. Disjoint fil
 **Docs:** verification results and any remaining intentional Plugin Check findings in release guide.
 **Commit:** `docs(listing): capture redirect management and editor screenshots`.
 
+### T5: Repair admin mutation transport · design · Terra
+
+**Owns:** `src/RestController.php`, `admin-src/api.js`, `tests/RestControllerTest.php`, regenerated `build/`.
+**Depends on:** T1.
+**Produces:** collection PUT and DELETE taking literal `request` JSON data, with existing capability checks and write-map rebuilds; old item routes remain compatible. Admin edits, renames, and deletes use the collection route.
+**Tests:** fail before implementation for collection update/delete; include slash, literal percent escapes, plus, query and wildcard keys; reject missing keys and unauthorized users. Browser edit, rename and delete must persist over actual HTTP.
+**Review:** yes, exact key handling and permissions.
+**Docs:** coordinator applies D4, changelog fix, and records actual browser verification.
+**Decision:** 0008.
+**Commit:** `fix(admin): send redirect mutation keys outside URL paths`.
+
 ## Rulings
 
 - [publication] Stop after local reviewable changes and screenshots, as owner explicitly requested — cost if wrong: high, premature publication.
@@ -108,6 +121,8 @@ Coordinator commits each task; implementers never mutate git state. Disjoint fil
 - [license] Standard GPL-3.0-or-later with preserved attribution replaces ambiguous trademark paragraph, for owner review before release — cost if wrong: medium, author can request revised trademark wording.
 - [tools] Shared preview and delegation endpoints lack thread credentials; same-provider native hands and dedicated Playwright CLI are available — cost if wrong: low, local tooling only.
 - [isolation] Use feature branch in the owner's shared project; no separate checkout needed for disjoint files — cost if wrong: low, changes remain reviewable.
+- [scope] Real UI validation found encoded-slash PUT/DELETE rejected by Apache before WordPress; T5 is necessary for usable admin captures and retains old routes — cost if wrong: medium, changes a public interface additively.
+- [normalization] WordPress URL parser and unslashed scalar request values preserve URL characters; isolated production coverage and existing matcher tests protect behavior — cost if wrong: medium, redirect matching must remain stable.
 
 ## Deferred
 
