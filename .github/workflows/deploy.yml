@@ -1,50 +1,43 @@
-name: Deploy
-
+name: GitHub release
 on:
   push:
-    tags:
-      - 'v*'
-
+    tags: ["v*"]
 permissions:
   contents: write
-
 jobs:
-  deploy:
+  release:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Build admin
-        run: |
-          npm install --no-audit --no-fund
-          npm run build
-
-      - name: Prepare for production
-        run: |
-          rm .gitignore
-          mv .deploy.gitignore .gitignore
-          rm -rf .github
-          rm -rf .idea
-          rm -rf .vscode
-          rm -rf admin-src
-          rm -rf docs
-          rm -rf node_modules
-          rm -rf tests
-          rm -f AGENTS.md CLAUDE.md
-          rm -f composer.lock package-lock.json
-          rm -f phpunit.xml.dist phpstan.neon phpstan.extension.neon
-
-      - name: Create a built branch
-        run: |
-          BRANCH_NAME="${GITHUB_REF_NAME}-built"
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Action"
-          git remote set-url origin "https://$GITHUB_ACTOR:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY.git"
-          git checkout -b "$BRANCH_NAME"
-          git add -A && git commit -m "built from $GITHUB_SHA"
-          git push --force -u origin "$BRANCH_NAME"
+          cache: npm
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          coverage: none
+      - run: npm ci --no-audit --no-fund
+      - run: composer install --no-interaction --prefer-dist
+      - run: composer validate --strict
+      - run: composer phpstan
+      - run: npm run lint
+      - run: npm run build
+      - run: git diff --exit-code -- build/
+      - run: npm run test:package
+      - run: composer env:start
+      - run: composer test
+      - if: always()
+        run: composer env:stop
+      - run: python3 scripts/package.py --tag "$GITHUB_REF_NAME"
+      - run: python3 scripts/package.py --tag "$GITHUB_REF_NAME" --verify dist/pv-redirects.zip
+      - name: Extract release archive for Plugin Check
+        run: unzip -q dist/pv-redirects.zip -d dist/plugin-check
+      - name: Check packaged plugin
+        uses: WordPress/plugin-check-action@v1
+        with:
+          build-dir: ./dist/plugin-check/pv-redirects
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/pv-redirects.zip
+          fail_on_unmatched_files: true

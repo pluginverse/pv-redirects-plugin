@@ -14,3 +14,11 @@
 # Logs
 *.log
 .phpunit.result.cache
+/.playwright-cli/
+
+# Local release archives
+/dist/
+
+# Python test cache
+__pycache__/
+*.pyc

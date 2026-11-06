@@ -1,0 +1,34 @@
+name: Publish to WordPress.org
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published GitHub release tag (vX.Y.Z)
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: wordpress-org
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+      SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+    steps:
+      - name: Check tag syntax
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo "Expected a vX.Y.Z release tag" >&2; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Download and verify published release
+        run: |
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Release must be published and stable") else true end'
+          mkdir -p dist
+          gh release download "$RELEASE_TAG" --pattern pv-redirects.zip --dir dist
+          python3 scripts/package.py --tag "$RELEASE_TAG" --verify dist/pv-redirects.zip
+      - name: Publish exact archive and tagged artwork
+        run: bash scripts/deploy-wordpress-org.sh

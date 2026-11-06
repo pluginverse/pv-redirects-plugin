@@ -1,7 +1,7 @@
 ---
 title: "Plan: WordPress.org release preparation"
 description: Prepare verified release archives, tag-based automation, and listing assets for review before submission.
-status: in-progress
+status: done
 date: 2026-11-06
 size: bounded
 specs: [redirects, distribution]
@@ -134,6 +134,19 @@ Coordinator commits each task; implementers never mutate git state. Disjoint fil
 - [scope] Real UI validation found encoded-slash PUT/DELETE rejected by Apache before WordPress; T5 is necessary for usable admin captures and retains old routes — cost if wrong: medium, changes a public interface additively.
 - [normalization] WordPress URL parser and unslashed scalar request values preserve URL characters; isolated production coverage and existing matcher tests protect behavior — cost if wrong: medium, redirect matching must remain stable.
 - [scope] Installed-ZIP CLI smoke revealed documented hyphenated migration flags were passed unchanged to an engine expecting underscore keys; T6 repairs the existing no-write dry-run contract. Only a disposable fixture was affected and removed — cost if wrong: high, migration must not write during previews.
+- [review] Duplicate hyphen/underscore flag aliases are rejected before writes; this prevents a false alias from overriding an enabled preview — cost if wrong: low, callers must pass one flag form.
+- [commits] Related runtime fixes T1/T5/T6 share one implementation commit and redirect-spec delta; metadata/artwork/captures T3/T4 share one listing commit; T2 automation and its docs ship together. Each resulting commit carries its corresponding changelog text.
+
+## Verification
+
+- `composer test`: 166 tests, 656 assertions, passed on WordPress 7.1.4/PHP 8.2.35. `composer phpstan`, `composer validate --strict`, `npm run lint`, and `npm run build` passed. Rebuilt bundles match committed output.
+- `npm run test:package`: four tests passed, including version mismatch and archive tampering, duplicate-name, extra-file, and traversal rejection. Matching v1.0.0 verification passed; v1.0.1 mismatch was rejected. Archive contains 19 selected files under `pv-redirects/`, including uninstall; no development dependencies or listing assets.
+- Installed the final archive without vendor dependencies. A real request to `/old-blog/release-proof/` returned HTTP 301 to `/blog/release-proof/`. Production migration loaded successfully. With a disposable QPPR option, actual `wp pv-redirects migrate --dry-run --delete-source` reported no writes and a SHA-256 snapshot of source, rules, settings, and map remained identical before and after. Fixture was removed and source development plugin reactivated; installed smoke-test copy remains inactive.
+- Plugin Check 2.1.0 on the installed ZIP: zero errors, 17 intentional warnings documented in the release guide. No global exclusions. Removed unused Domain Path header because an empty language directory is not distributed; directory language packs use WordPress's standard loading.
+- Browser verified add, edit, rename, delete, and saved per-post metadata; manager console clean. Editor showed one core global-styles iframe warning and no errors. All dedicated browser sessions closed. Demo listing rows and post remain in local wp-env.
+- Eight final PNGs verified: banners 772×250/1544×500, icons 128×128/256×256, overview 1544×900, real captures 1440×1000. Editable SVG sources and capture instructions are included.
+- Fresh release review found no actionable findings; an additional targeted migration review found the duplicate-alias edge, which was reproduced with a failing test and fixed. Local SVN copy experiment verified modified/added trunk files enter the new tag.
+- Live GitHub Actions and credentialed SVN publication were not run because publication waits for owner approval. Required-reviewer environment settings and secrets remain owner setup. Actual browser testing used current WordPress; the minimum WordPress 6.4 JSX path is covered by isolated regression stubs, not a separate live minimum-version browser run.
 
 ## Deferred
 

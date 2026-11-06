@@ -11,10 +11,10 @@
     },
     "scripts": {
         "phpstan": "phpstan analyse --memory-limit=512M",
-        "env:start": "wp-env start",
-        "env:debug": "wp-env start --xdebug=profile,trace,debug",
-        "env:stop": "wp-env stop",
-        "test": "npx --yes @wordpress/env run tests-cli --env-cwd=wp-content/plugins/pv-redirects-plugin vendor/bin/phpunit"
+        "env:start": "npm exec -- wp-env start",
+        "env:debug": "npm exec -- wp-env start --xdebug=profile,trace,debug",
+        "env:stop": "npm exec -- wp-env stop",
+        "test": "npm exec -- wp-env run tests-cli --env-cwd=wp-content/plugins/pv-redirects-plugin vendor/bin/phpunit"
     },
     "authors": [
         {
@@ -39,5 +39,15 @@
         "szepeviktor/phpstan-wordpress": "^2.0",
         "wp-phpunit/wp-phpunit": "^6.7",
         "yoast/phpunit-polyfills": "^4.0"
+    },
+    "keywords": [
+        "wordpress",
+        "wordpress-plugin",
+        "redirects",
+        "redirect",
+        "seo"
+    ],
+    "require": {
+        "php": ">=8.2"
     }
 }

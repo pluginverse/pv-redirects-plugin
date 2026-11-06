@@ -12,10 +12,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Save, rename, and delete redirects through JSON request keys so Apache's encoded-slash handling cannot block admin changes; existing REST item routes remain supported.
 - Honor WP-CLI migration flags, including no-write dry runs and skip/delete-source flags; reject duplicate flag aliases before writing.
 
+### Build
+
+- Add reproducible installable ZIPs, matching semantic-tag validation, pinned wp-env, packaged Plugin Check, GitHub release assets, and manually dispatched WordPress.org SVN publishing with environment approval setup.
+- Declare Composer PHP requirements and WordPress plugin keywords; document tagged VCS installation and consumer installer configuration.
+
 ### Documentation
 
 - Include the full GPL-3.0-or-later license and standardize licensing metadata, replacing the ambiguous custom additional-permission paragraph.
 - Add WordPress.org readme, listing banners/icons/overview, real admin/editor screenshots, and ZIP/Composer installation instructions.
+- Document release setup, testing, and intentional Plugin Check warnings.
 
 ### Added
 
