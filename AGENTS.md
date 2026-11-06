@@ -2,10 +2,14 @@
 
 ## Purpose
 
-PV Redirects (Plugin Verse Redirects) is a WordPress plugin that replaces Quick Page/Post Redirect:
+PV Redirects (Pluginverse Redirects) is a WordPress plugin that replaces Quick Page/Post Redirect:
 fast redirects via one computed autoloaded map (single read per request, zero DB on cache hit),
 wildcard matching, per-post redirects, a WP-components admin, WP-CLI-first operations, and a
 one-command migration off QPPR. Deployed from this repo to `pluginverse/pv-redirects-plugin`.
+
+## Branding
+
+Write the brand name **Pluginverse**. Consult the [canonical branding repository](https://github.com/pluginverse/branding) for future visuals. Use the standalone symbol at `assets/logos/svg/pluginverse-symbol-color.svg`, not the wordmark; preserve its supplied clear space and use the appropriate official variant.
 
 ## Quick start
 

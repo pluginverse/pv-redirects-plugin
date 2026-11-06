@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.0.0] - 2026-11-06
 
+### Changed
+
+- Correct the brand name to Pluginverse and replace PR monograms with the canonical standalone plug/orbit symbol in listing banners, icons, and overview artwork. The owner requested replacement of the GitHub 1.0.0 release before WordPress.org approval.
+
 ### Fixed
 
 - Load the QPPR migrator in standalone plugin installations, load declared admin bundle dependencies, and normalize WordPress request globals before routing.

@@ -10,7 +10,7 @@ status: current
 
 PV Redirects moves sites off Quick Page/Post Redirect (QPPR) without downtime: redirects keep
 living in an option and in post meta where editors expect them, while the front-end read path
-loads exactly one autoloaded, precomputed map per request. For Plugin Verse sites it is the single
+loads exactly one autoloaded, precomputed map per request. For Pluginverse sites it is the single
 redirect manager — CLI-first, no jQuery, wildcard-capable.
 
 ## Behavior

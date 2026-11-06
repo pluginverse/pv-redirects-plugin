@@ -1,6 +1,6 @@
 ## PV Redirects
 
-PV Redirects (Plugin Verse Redirects) is a WordPress redirect manager built for speed and automation: every redirect resolves through one autoloaded map, so the front-end read path is a single `get_option` round-trip with zero DB queries on a cache hit. It is a modern replacement for Quick Page/Post Redirect (QPPR) — wildcard redirects, a WP-components admin (no jQuery), and WP-CLI management including one-command migration off QPPR.
+PV Redirects (Pluginverse Redirects) is a WordPress redirect manager built for speed and automation: every redirect resolves through one autoloaded map, so the front-end read path is a single `get_option` round-trip with zero DB queries on a cache hit. It is a modern replacement for Quick Page/Post Redirect (QPPR) — wildcard redirects, a WP-components admin (no jQuery), and WP-CLI management including one-command migration off QPPR.
 
 ## Features
 

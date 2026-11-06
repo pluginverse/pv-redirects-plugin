@@ -14,6 +14,7 @@ Produce a verifiable installable archive from each release tag and publish that 
 - The plugin header, readme stable tag, and package version must all match numeric `X.Y.Z`. If supplied, the Git tag must be `vX.Y.Z` with the same version. Prereleases and mismatches fail.
 - A tag workflow runs checks and attaches the verified archive to its GitHub release. A separate manual workflow downloads that release archive, verifies its files against the selected tag, and deploys it to SVN trunk and a new numeric tag. Existing SVN tags are never overwritten.
 - The manual workflow publishes tagged `.wordpress-org/` artwork to the SVN assets directory. Numbered screenshots correspond to readme captions and never enter the plugin archive.
+- Listing artwork uses the Pluginverse standalone plug/orbit symbol from the canonical branding repository, with source provenance and usage recorded in the listing guide. It does not use the text-logo lockup or a PR monogram.
 - Composer package type is `wordpress-plugin` and requires PHP 8.2 or newer. Installation from a Git tag uses a VCS repository and consumer-configured Composer installer.
 
 ## Acceptance criteria

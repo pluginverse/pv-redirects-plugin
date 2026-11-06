@@ -1,6 +1,6 @@
 # Plan: PV Redirects v1.0.0 — 2026-11-04
 
-Build PV Redirects (Plugin Verse Redirects), a modern replacement for Quick Page/Post Redirect
+Build PV Redirects (Pluginverse Redirects), a modern replacement for Quick Page/Post Redirect
 (QPPR). Goal: lossless migration path, single-round-trip read path, wildcard matching, WP-components
 admin, WP-CLI-first operations.
 

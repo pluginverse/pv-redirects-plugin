@@ -5,7 +5,13 @@ description: Maintain the directory artwork and reproduce genuine screenshots fr
 
 ## Files
 
-Directory media lives in `.wordpress-org/` and is published to SVN's top-level `assets/`, outside the installed plugin archive. Banners are 772×250 and 1544×500 PNGs; icons are 128×128 and 256×256 PNGs. Editable vector sources are `assets/listing/banner.svg`, `icon.svg`, and `overview.svg`. The amber mark extends the existing plugin identity. Export the source at its target size with a browser, preserving text and aspect ratio.
+Directory media lives in `.wordpress-org/` and is published to SVN's top-level `assets/`, outside the installed plugin archive. Banners are 772×250 and 1544×500 PNGs; icons are 128×128 and 256×256 PNGs. Editable vector sources are `assets/listing/banner.svg`, `icon.svg`, and `overview.svg`. Export the source at its target size with a browser, preserving text and aspect ratio.
+
+## Pluginverse brand source
+
+The organization name is **Pluginverse**, one word. [pluginverse/branding](https://github.com/pluginverse/branding) is the canonical source for future brand updates; consult it before changing identity assets. The current standalone plug/orbit symbol comes from `assets/logos/svg/pluginverse-symbol-color.svg` and supplied light-on-dark variants at [commit 22c6062499ec2605e63d67b30a4997b1172d8df5](https://github.com/pluginverse/branding/tree/22c6062499ec2605e63d67b30a4997b1172d8df5/assets/logos/svg). `assets/icon.svg` holds the local standalone symbol; listing sources embed the complete mark rather than a wordmark or PR monogram. Accessible titles use the current Pluginverse spelling.
+
+Keep the supplied geometry, transparent plug cutout, proportions, and clear space. Use the violet `#4326F2` symbol on light surfaces and supplied white/lilac variants on Deep Space `#151127`. Do not extract the plug, retype the wordmark, or recolor individual fragments. Full-symbol placement must meet the source's 48-pixel minimum at the final display size. The existing product name and value-proposition composition remain PV Redirects; the actual admin/editor captures remain unchanged.
 
 `screenshot-1.png` is the 1544×900 value-proposition graphic. Screenshots 2–4 are unchanged 1440×1000 browser captures of the real plugin: redirect manager, expanded post editor Redirect panel, and expanded settings. Their order must match `readme.txt` captions. Do not replace real UI with fabricated screens or alter screenshots to imply features the plugin does not provide.
 

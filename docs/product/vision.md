@@ -5,7 +5,7 @@ description: Who PV Redirects is for, the problem it solves, and what it will no
 
 ## Who it is for
 
-Plugin Verse sites and the people and agents operating them: teams that keep hundreds or thousands of legacy URLs alive across posts and custom post types, and who manage redirects from the terminal — or hand them to an AI agent — rather than clicking through a browser tab. It is also for anyone still running Quick Page/Post Redirect (QPPR) who wants out without downtime.
+Pluginverse sites and the people and agents operating them: teams that keep hundreds or thousands of legacy URLs alive across posts and custom post types, and who manage redirects from the terminal — or hand them to an AI agent — rather than clicking through a browser tab. It is also for anyone still running Quick Page/Post Redirect (QPPR) who wants out without downtime.
 
 ## The problem
 
