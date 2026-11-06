@@ -1,9 +1,9 @@
 ---
 title: "0007: Publish versioned archives with gated WordPress.org deployment"
 description: Use semantic Git tags and validated plugin ZIPs, then explicitly approve separate WordPress.org SVN publication.
-status: proposed
+status: accepted
 date: 2026-11-06
-decision-makers: "Spenser Hale (review pending), Codex (draft)"
+decision-makers: "Spenser Hale (approved), Codex (draft)"
 ---
 
 ## Context
@@ -25,7 +25,7 @@ Composer package type remains `wordpress-plugin`. PHP requirements are consumer-
 
 GitHub and WordPress.org releases use the same files. Review and SVN credential setup are explicit. Maintainers perform a separate dispatch after publishing a GitHub release; semantic version metadata must agree across tag, header, package and readme. Environment protection must be configured by the repository owner; declaring an environment in YAML alone does not require approval.
 
-The distributed plugin uses standard GPL-3.0-or-later metadata and a full license copy. The ambiguous bespoke additional-permission paragraph is removed while retaining copyright attribution. This proposed record and that wording remain reviewable before publication.
+The distributed plugin uses standard GPL-3.0-or-later metadata and a full license copy. The ambiguous bespoke additional-permission paragraph is removed while retaining copyright attribution. The owner approved the prepared changes before publication.
 
 ## Revisit when
 

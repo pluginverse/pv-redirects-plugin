@@ -1,9 +1,9 @@
 ---
 title: "0008: Send redirect mutation keys in JSON bodies"
 description: Add collection mutations so Apache encoded-slash handling cannot block redirect edits and deletes.
-status: proposed
+status: accepted
 date: 2026-11-06
-decision-makers: "Spenser Hale (review pending), Codex (draft)"
+decision-makers: "Spenser Hale (approved), Codex (draft)"
 ---
 
 ## Context

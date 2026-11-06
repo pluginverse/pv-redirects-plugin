@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-06
+
 ### Fixed
 
 - Load the QPPR migrator in standalone plugin installations, load declared admin bundle dependencies, and normalize WordPress request globals before routing.
