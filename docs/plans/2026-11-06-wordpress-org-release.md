@@ -114,6 +114,16 @@ Coordinator commits each task; implementers never mutate git state. Disjoint fil
 **Decision:** 0008.
 **Commit:** `fix(admin): send redirect mutation keys outside URL paths`.
 
+### T6: Preserve WP-CLI migration flags · design · Terra
+
+**Owns:** `src/Cli.php`, `tests/CliTest.php` or a dedicated CLI regression file.
+**Depends on:** T1.
+**Produces:** documented hyphenated WP-CLI flags map to the migrator's internal underscore keys. `--dry-run` writes nothing; `--delete-source`, `--skip-quick`, and `--skip-posts` retain their documented meanings.
+**Tests:** invoke the CLI handler with WP-CLI-shaped hyphenated arguments and a seeded QPPR fixture; assert dry-run preserves all target/source options and meta, honors skip flags, and never deletes source when combined with delete-source. Real installed-ZIP CLI smoke must verify the dry-run leaves no target rule.
+**Review:** yes, migration data preservation.
+**Docs:** existing spec contract already states this behavior; coordinator records the bug fix in changelog and this plan.
+**Commit:** `fix(cli): translate migration flags before invoking engine`.
+
 ## Rulings
 
 - [publication] Stop after local reviewable changes and screenshots, as owner explicitly requested — cost if wrong: high, premature publication.
@@ -123,6 +133,7 @@ Coordinator commits each task; implementers never mutate git state. Disjoint fil
 - [isolation] Use feature branch in the owner's shared project; no separate checkout needed for disjoint files — cost if wrong: low, changes remain reviewable.
 - [scope] Real UI validation found encoded-slash PUT/DELETE rejected by Apache before WordPress; T5 is necessary for usable admin captures and retains old routes — cost if wrong: medium, changes a public interface additively.
 - [normalization] WordPress URL parser and unslashed scalar request values preserve URL characters; isolated production coverage and existing matcher tests protect behavior — cost if wrong: medium, redirect matching must remain stable.
+- [scope] Installed-ZIP CLI smoke revealed documented hyphenated migration flags were passed unchanged to an engine expecting underscore keys; T6 repairs the existing no-write dry-run contract. Only a disposable fixture was affected and removed — cost if wrong: high, migration must not write during previews.
 
 ## Deferred
 
