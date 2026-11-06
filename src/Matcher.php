@@ -8,7 +8,7 @@ use function count;
 use function ctype_digit;
 use function explode;
 use function implode;
-use function parse_url;
+use function wp_parse_url;
 use function preg_match;
 use function preg_quote;
 use function preg_replace_callback;
@@ -167,7 +167,7 @@ final class Matcher {
 			$to
 		);
 
-		$scheme = parse_url( $dest, PHP_URL_SCHEME );
+		$scheme = wp_parse_url( $dest, PHP_URL_SCHEME );
 
 		if ( is_string( $scheme ) && $scheme !== '' ) {
 			return $dest;

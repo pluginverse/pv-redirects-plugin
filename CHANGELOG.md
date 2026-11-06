@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Load the QPPR migrator in standalone plugin installations, load declared admin bundle dependencies, and normalize WordPress request globals before routing.
+- Save, rename, and delete redirects through JSON request keys so Apache's encoded-slash handling cannot block admin changes; existing REST item routes remain supported.
+- Honor WP-CLI migration flags, including no-write dry runs and skip/delete-source flags; reject duplicate flag aliases before writing.
+
+### Documentation
+
+- Include the full GPL-3.0-or-later license and standardize licensing metadata, replacing the ambiguous custom additional-permission paragraph.
+
 ### Added
 
 - Redirect matching through one autoloaded `pv_redirects_map` option: single-round-trip read path, zero DB queries on a cache hit ([ADR-0002](docs/decisions/0002-computed-autoloaded-map.md)).

@@ -59,17 +59,16 @@ export function createRedirect( requestPath, to, status ) {
 }
 
 /**
- * Update one redirect by request key. The key is URL-encoded for the route regex; the
- * controller rawurldecodes it on the other side.
+ * Update one redirect by its literal request key.
  *
  * @param {string} requestPath Request path.
  * @param {string} to          Destination.
  * @param {number} status      HTTP status.
  */
 export function updateRedirect( requestPath, to, status ) {
-	return request( `/redirects/${ encodeURIComponent( requestPath ) }`, {
+	return request( '/redirects', {
 		method: 'PUT',
-		data: { to, status },
+		data: { request: requestPath, to, status },
 	} );
 }
 
@@ -79,8 +78,9 @@ export function updateRedirect( requestPath, to, status ) {
  * @param {string} requestPath Request path.
  */
 export function deleteRedirect( requestPath ) {
-	return request( `/redirects/${ encodeURIComponent( requestPath ) }`, {
+	return request( '/redirects', {
 		method: 'DELETE',
+		data: { request: requestPath },
 	} );
 }
 

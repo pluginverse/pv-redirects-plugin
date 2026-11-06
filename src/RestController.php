@@ -56,6 +56,21 @@ final class RestController {
 					],
 				],
 				[
+					'methods'             => 'PUT',
+					'callback'            => '\PV\Redirects\RestController::updateCollectionRedirect',
+					'permission_callback' => '\PV\Redirects\RestController::canManage',
+					'args'                => self::requestArg() + [
+						'to'     => [ 'type' => 'string', 'required' => true ],
+						'status' => [ 'type' => 'integer', 'required' => true ],
+					],
+				],
+				[
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => '\PV\Redirects\RestController::deleteCollectionRedirect',
+					'permission_callback' => '\PV\Redirects\RestController::canManage',
+					'args'                => self::requestArg(),
+				],
+				[
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => '\PV\Redirects\RestController::createRedirect',
 					'permission_callback' => '\PV\Redirects\RestController::canManage',
@@ -167,6 +182,16 @@ final class RestController {
 		return self::upsert( self::stringParam( $request, 'request' ), $request, 201 );
 	}
 
+	/** PUT /redirects — upsert using the literal request key in the body. */
+	public static function updateCollectionRedirect( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		return self::upsert( self::stringParam( $request, 'request' ), $request, 200 );
+	}
+
+	/** DELETE /redirects — delete using the literal request key in the body. */
+	public static function deleteCollectionRedirect( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		return self::deleteKey( self::stringParam( $request, 'request' ) );
+	}
+
 	/**
 	 * GET /redirects/{request} — 404 when the key is unknown.
 	 */
@@ -191,8 +216,10 @@ final class RestController {
 	 * DELETE /redirects/{request} — 404 when the key is unknown.
 	 */
 	public static function deleteRedirect( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$request_key = self::requestParam( $request );
+		return self::deleteKey( self::requestParam( $request ) );
+	}
 
+	private static function deleteKey( string $request_key ): WP_REST_Response|WP_Error {
 		if ( ! OptionStore::delete( $request_key ) ) {
 			return self::error( 'pv_redirects_not_found', __( 'Redirect not found.', 'pv-redirects' ), 404 );
 		}

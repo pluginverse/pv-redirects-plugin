@@ -294,6 +294,41 @@ final class RestControllerTest extends TestCase {
 		);
 	}
 
+	public function testCollectionMutationsPreserveLiteralKeysAndRebuildMap(): void {
+		foreach ( [ '/nested/path/', '/literal%2Fpart/', '/plus+sign/', '/search/?q=a%20b', '/wild/*' ] as $key ) {
+			OptionStore::set( $key, '/before/', 301 );
+			$this->assertSuccessResponse( $this->dispatchJson( 'PUT', [ 'request' => $key, 'to' => '/after/', 'status' => 302 ] ), 200, [ 'request' => $key, 'to' => '/after/', 'status' => 302 ] );
+			static::assertSame( [ 'to' => '/after/', 'status' => 302 ], OptionStore::get( $key ) );
+			if ( ! str_contains( $key, '*' ) ) {
+				static::assertSame( '/after/', RedirectMap::get()['exact'][strtolower( $key )]['to'] ?? null );
+			}
+			$this->assertSuccessResponse( $this->dispatchJson( 'DELETE', [ 'request' => $key ] ), 200, [ 'request' => $key, 'deleted' => true ] );
+			static::assertNull( OptionStore::get( $key ) );
+			static::assertSame( [], RedirectMap::get()['exact'] );
+			static::assertSame( [], RedirectMap::get()['wildcards'] );
+		}
+	}
+
+	public function testCollectionMutationsRejectMissingAndUnknownKeys(): void {
+		$this->assertErrorResponse( $this->dispatchJson( 'PUT', [ 'to' => '/x', 'status' => 301 ] ), 'rest_missing_callback_param', 400 );
+		$this->assertErrorResponse( $this->dispatchJson( 'DELETE', [] ), 'rest_missing_callback_param', 400 );
+		$this->assertErrorResponse( $this->dispatchJson( 'DELETE', [ 'request' => '/missing/' ] ), 'pv_redirects_not_found', 404 );
+	}
+
+	public function testCollectionMutationsRequireAuthorization(): void {
+		wp_set_current_user( 0 );
+		$this->assertErrorResponse( $this->dispatchJson( 'PUT', [ 'request' => '/x', 'to' => '/y', 'status' => 301 ] ), 'rest_forbidden', 401 );
+		$this->assertErrorResponse( $this->dispatchJson( 'DELETE', [ 'request' => '/x' ] ), 'rest_forbidden', 401 );
+	}
+
+	/** @param array<string, mixed> $params */
+	private function dispatchJson( string $method, array $params ): WP_REST_Response|WP_Error {
+		$request = new WP_REST_Request( $method, '/pv-redirects/v1/redirects' );
+		$request->set_header( 'Content-Type', 'application/json' );
+		$request->set_body( wp_json_encode( $params ) );
+		return rest_get_server()->dispatch( $request );
+	}
+
 	// ---------------------------------------------------------------- settings
 
 	public function testSettingsRoundtripRebuildsMapSnapshot(): void {

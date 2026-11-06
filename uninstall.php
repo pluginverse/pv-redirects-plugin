@@ -48,8 +48,8 @@ function pv_redirects_delete_site_data(): void {
 }
 
 if ( is_multisite() ) {
-    foreach ( get_sites( array( 'fields' => 'ids', 'number' => 0 ) ) as $site_id ) {
-        switch_to_blog( (int) $site_id );
+    foreach ( get_sites( array( 'fields' => 'ids', 'number' => 0 ) ) as $pv_redirects_site_id ) {
+        switch_to_blog( (int) $pv_redirects_site_id );
         pv_redirects_delete_site_data();
         restore_current_blog();
     }

@@ -68,7 +68,7 @@ final class PostMetaStore {
 	public static function set( int $post_id, string $to, int $status, bool $active ): void {
 		if ( ! in_array( $status, OptionStore::STATUSES, true ) ) {
 			throw new InvalidArgumentException(
-				sprintf( 'Invalid redirect status %d; expected one of: 301, 302, 307, 308.', $status )
+				sprintf( 'Invalid redirect status %d; expected one of: 301, 302, 307, 308.', $status ) // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
 			);
 		}
 

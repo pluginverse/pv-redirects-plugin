@@ -7,10 +7,9 @@
  * Requires PHP: 8.2
  * Author: Spenser Hale
  * Author URI: https://www.spenserhale.com/
- * License: GPL v3
+ * License: GPL-3.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain: pv-redirects
- * Domain Path: /languages
  *
  * PV Redirects
  * Copyright (C) 2026 Spenser Hale
@@ -27,13 +26,6 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- * Additional Permission Under GNU GPL version 3 section 7:
- *
- * The name "Spenser Hale" and its associated
- * branding elements are protected by copyright/trademark law and may not
- * be used in association with derivative works that are not owned by
- * Spenser Hale without express written permission.
  */
 
 namespace PV\Redirects;
@@ -45,6 +37,10 @@ use function plugin_dir_url;
 use function register_activation_hook;
 use function spl_autoload_register;
 use function str_starts_with;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 if ( PHP_VERSION_ID < 80200 ) {
 	_doing_it_wrong( __FILE__, 'PV Redirects requires PHP 8.2 or higher.', '1.0.0' );
@@ -62,6 +58,7 @@ function class_autoloader( string $class ): void {
 			Admin::class           => __DIR__.'/src/Admin.php',
 			Cli::class             => __DIR__.'/src/Cli.php',
 			Matcher::class         => __DIR__.'/src/Matcher.php',
+			Migrator::class        => __DIR__.'/src/Migrator.php',
 			OptionStore::class     => __DIR__.'/src/OptionStore.php',
 			PostMetaStore::class   => __DIR__.'/src/PostMetaStore.php',
 			RedirectHandler::class => __DIR__.'/src/RedirectHandler.php',

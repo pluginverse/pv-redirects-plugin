@@ -149,7 +149,7 @@ final class Admin {
 				. ' return { jsx: jsx, jsxs: jsx, Fragment: element.Fragment };'
 				. '}( window.wp.element ) );';
 
-		wp_register_script( 'pv-redirects-jsx-runtime', false, [ 'wp-element' ], null, false );
+		wp_register_script( 'pv-redirects-jsx-runtime', false, [ 'wp-element' ], PV_REDIRECTS_VERSION, false );
 		wp_add_inline_script( 'pv-redirects-jsx-runtime', $shim );
 
 		return 'pv-redirects-jsx-runtime';
@@ -174,7 +174,7 @@ final class Admin {
 		wp_enqueue_script(
 			self::SCRIPT_ADMIN,
 			PV_REDIRECTS_URL.'build/index.js',
-			[ self::jsxRuntimeDependency(), 'wp-element', 'wp-components', 'wp-data', 'wp-api-fetch' ],
+			self::assetDependencies( 'index', [ 'react-jsx-runtime', 'wp-api-fetch', 'wp-components', 'wp-element', 'wp-i18n' ] ),
 			self::assetVersion( $file ),
 			true
 		);
@@ -206,10 +206,39 @@ final class Admin {
 		wp_enqueue_script(
 			self::SCRIPT_SIDEBAR,
 			PV_REDIRECTS_URL.'build/sidebar.js',
-			[ self::jsxRuntimeDependency(), 'wp-element', 'wp-components', 'wp-data', 'wp-plugins', 'wp-edit-post', 'wp-api-fetch' ],
+			self::assetDependencies( 'sidebar', [ 'react-jsx-runtime', 'wp-components', 'wp-data', 'wp-edit-post', 'wp-editor', 'wp-i18n', 'wp-plugins' ] ),
 			self::assetVersion( $file ),
 			true
 		);
+	}
+
+	/**
+	 * @param list<non-empty-string> $fallback Dependencies used if the build manifest is missing.
+	 * @return list<non-empty-string>
+	 */
+	private static function assetDependencies( string $name, array $fallback ): array {
+		$manifest_file = PV_REDIRECTS_PATH.'build/'.$name.'.asset.php';
+		if ( file_exists( $manifest_file ) ) {
+			$manifest = require $manifest_file;
+			if ( ! is_array( $manifest ) || ! isset( $manifest['dependencies'] ) || ! is_array( $manifest['dependencies'] ) ) {
+				throw new \UnexpectedValueException( 'Invalid asset manifest: '.$manifest_file ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
+			}
+			$fallback = [];
+			foreach ( $manifest['dependencies'] as $dependency ) {
+				if ( ! is_string( $dependency ) || $dependency === '' ) {
+					throw new \UnexpectedValueException( 'Invalid asset dependency in: '.$manifest_file ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
+				}
+				$fallback[] = $dependency;
+			}
+		}
+
+		foreach ( $fallback as $index => $dependency ) {
+			if ( $dependency === 'react-jsx-runtime' ) {
+				$fallback[$index] = self::jsxRuntimeDependency();
+			}
+		}
+
+		return $fallback;
 	}
 
 	private static function assetVersion( string $file ): string {

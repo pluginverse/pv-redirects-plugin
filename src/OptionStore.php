@@ -87,7 +87,7 @@ final class OptionStore {
 	public static function set( string $request, string $to, int $status ): void {
 		if ( ! in_array( $status, self::STATUSES, true ) ) {
 			throw new InvalidArgumentException(
-				sprintf( 'Invalid redirect status %d; expected one of: 301, 302, 307, 308.', $status )
+				sprintf( 'Invalid redirect status %d; expected one of: 301, 302, 307, 308.', $status ) // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
 			);
 		}
 
@@ -115,8 +115,8 @@ final class OptionStore {
 			throw new InvalidArgumentException(
 				sprintf(
 					'Invalid redirect request "%1$s"; a wildcard pattern may contain at most %2$d "*".',
-					$request,
-					Matcher::MAX_WILDCARD_STARS
+					$request, // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
+					Matcher::MAX_WILDCARD_STARS // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
 				)
 			);
 		}
@@ -136,7 +136,7 @@ final class OptionStore {
 
 		if ( strlen( $to ) > self::MAX_DESTINATION_LENGTH ) {
 			throw new InvalidArgumentException(
-				sprintf( 'Invalid redirect destination; it is longer than %d characters.', self::MAX_DESTINATION_LENGTH )
+				sprintf( 'Invalid redirect destination; it is longer than %d characters.', self::MAX_DESTINATION_LENGTH ) // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
 			);
 		}
 	}

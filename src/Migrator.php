@@ -19,7 +19,7 @@ use function in_array;
 use function is_array;
 use function is_int;
 use function is_string;
-use function parse_url;
+use function wp_parse_url;
 use function preg_match;
 use function remove_action;
 use function sprintf;
@@ -193,7 +193,7 @@ final class Migrator {
 
 					// Map keys are path-only, so a key carrying a URL scheme (mailto:…,
 					// https://…) can never match a request — skip it for manual review.
-					$key_scheme = parse_url( $key, PHP_URL_SCHEME );
+					$key_scheme = wp_parse_url( $key, PHP_URL_SCHEME );
 
 					if ( is_string( $key_scheme ) && $key_scheme !== '' ) {
 						$warnings[] = sprintf(

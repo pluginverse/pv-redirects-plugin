@@ -10,7 +10,7 @@ use function get_permalink;
 use function home_url;
 use function is_array;
 use function is_string;
-use function parse_url;
+use function wp_parse_url;
 use function str_contains;
 use function strpos;
 use function str_starts_with;
@@ -162,10 +162,10 @@ final class RedirectMap {
 	 * prefix so keys line up with the home-stripped request paths the matcher sees.
 	 */
 	private static function permalinkKey( string $permalink, bool $case_sensitive ): string {
-		$path  = (string) parse_url( $permalink, PHP_URL_PATH );
-		$query = (string) parse_url( $permalink, PHP_URL_QUERY );
+		$path  = (string) wp_parse_url( $permalink, PHP_URL_PATH );
+		$query = (string) wp_parse_url( $permalink, PHP_URL_QUERY );
 
-		$home_path = (string) parse_url( home_url(), PHP_URL_PATH );
+		$home_path = (string) wp_parse_url( home_url(), PHP_URL_PATH );
 
 		if ( $home_path !== '' && $home_path !== '/' && str_starts_with( $path, $home_path ) ) {
 			$path = substr( $path, strlen( $home_path ) );

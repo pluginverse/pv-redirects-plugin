@@ -11,7 +11,7 @@ use function home_url;
 use function is_admin;
 use function is_ssl;
 use function is_string;
-use function parse_url;
+use function wp_parse_url;
 use function preg_match;
 use function strpos;
 use function str_ends_with;
@@ -20,6 +20,7 @@ use function str_starts_with;
 use function substr;
 use function wp_doing_cron;
 use function wp_redirect;
+use function wp_unslash;
 
 /**
  * Front-end execution, all static entry points and no state:
@@ -38,7 +39,8 @@ final class RedirectHandler {
 	 * `init` hook, priority 1: match the current request against the map and redirect on hit.
 	 */
 	public static function init(): void {
-		$rest_route = $_GET['rest_route'] ?? '';
+		// Read-only request routing; preserve URL characters for matching.
+		$rest_route = isset( $_GET['rest_route'] ) && is_string( $_GET['rest_route'] ) ? wp_unslash( $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Routing does not mutate state; URL characters must be preserved.
 
 		// REST_REQUEST is only defined at parse_request — AFTER init — so it cannot guard
 		// this hook: a wildcard like '/wp*' would 301 /wp-json/… and break REST sitewide.
@@ -46,14 +48,14 @@ final class RedirectHandler {
 		// check below covers plain-permalink REST requests.
 		if (
 			is_admin()
-			|| ( is_string( $rest_route ) && $rest_route !== '' )
+			|| $rest_route !== ''
 			|| wp_doing_cron()
 			|| ( defined( 'WP_CLI' ) && WP_CLI )
 		) {
 			return;
 		}
 
-		if ( ( $_GET['action'] ?? '' ) === 'no-redirect' ) {
+		if ( self::hasBypassParameter() ) {
 			return;
 		}
 
@@ -92,7 +94,7 @@ final class RedirectHandler {
 			return $redirect_url;
 		}
 
-		if ( ( $_GET['action'] ?? '' ) === 'no-redirect' ) {
+		if ( self::hasBypassParameter() ) {
 			return $redirect_url;
 		}
 
@@ -133,7 +135,7 @@ final class RedirectHandler {
 	 * ID and therefore authoritative — all in-memory, zero DB.
 	 */
 	public static function templateRedirect(): void {
-		if ( ( $_GET['action'] ?? '' ) === 'no-redirect' ) {
+		if ( self::hasBypassParameter() ) {
 			return;
 		}
 
@@ -256,14 +258,19 @@ final class RedirectHandler {
 		exit;
 	}
 
+	/** A read-only bypass flag is not a form submission. */
+	private static function hasBypassParameter(): bool {
+		return isset( $_GET['action'] ) && is_string( $_GET['action'] ) && wp_unslash( $_GET['action'] ) === 'no-redirect'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Exact comparison validates this read-only flag.
+	}
+
 	/**
 	 * Current request as [path, raw query string], via normalizeRequestedUrl().
 	 *
 	 * @return array{string, string}
 	 */
 	private static function currentRequest(): array {
-		$uri    = isset( $_SERVER['REQUEST_URI'] ) && is_string( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '/';
-		$host   = isset( $_SERVER['HTTP_HOST'] ) && is_string( $_SERVER['HTTP_HOST'] ) ? $_SERVER['HTTP_HOST'] : '';
+		$uri    = isset( $_SERVER['REQUEST_URI'] ) && is_string( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '/'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Preserve raw URL path and query for matching.
+		$host   = isset( $_SERVER['HTTP_HOST'] ) && is_string( $_SERVER['HTTP_HOST'] ) ? wp_unslash( $_SERVER['HTTP_HOST'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Host is used only to normalize the request URL.
 		$scheme = is_ssl() ? 'https://' : 'http://';
 
 		return self::normalizeRequestedUrl( $scheme.$host.$uri );
@@ -285,7 +292,7 @@ final class RedirectHandler {
 			$path = $matches['rest'];
 		}
 
-		$home_path = (string) parse_url( home_url(), PHP_URL_PATH );
+		$home_path = (string) wp_parse_url( home_url(), PHP_URL_PATH );
 
 		if ( $home_path !== '' && $home_path !== '/' && str_starts_with( $path, $home_path ) ) {
 			$path = substr( $path, strlen( $home_path ) );

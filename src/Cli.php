@@ -18,7 +18,7 @@ use function home_url;
 use function in_array;
 use function is_scalar;
 use function is_string;
-use function parse_url;
+use function wp_parse_url;
 use function preg_match;
 use function preg_replace;
 use function sprintf;
@@ -56,6 +56,7 @@ final class Cli {
 
 		WP_CLI::success(
 			sprintf(
+				/* translators: 1: number of exact rules; 2: number of wildcard rules. */
 				__( 'Redirect map rebuilt (%1$d rules, %2$d wildcards).', 'pv-redirects' ),
 				count( $map['exact'] ),
 				count( $map['wildcards'] )
@@ -97,6 +98,16 @@ final class Cli {
 
 		if ( ! Migrator::hasSource() ) {
 			WP_CLI::error( __( 'No Quick Page/Post Redirect data found; nothing to migrate.', 'pv-redirects' ) );
+		}
+
+		// WP-CLI supplies hyphenated flag names; the migrator's internal API uses underscores.
+		foreach ( [ 'dry-run' => 'dry_run', 'delete-source' => 'delete_source', 'skip-quick' => 'skip_quick', 'skip-posts' => 'skip_posts' ] as $cli_flag => $migration_flag ) {
+			if ( array_key_exists( $cli_flag, $assoc_args ) ) {
+				if ( array_key_exists( $migration_flag, $assoc_args ) ) {
+					WP_CLI::error( __( 'Use only one form of each migration flag.', 'pv-redirects' ) );
+				}
+				$assoc_args[$migration_flag] = $assoc_args[$cli_flag];
+			}
 		}
 
 		$report = Migrator::migrate( $args, $assoc_args );
@@ -192,7 +203,7 @@ final class Cli {
 
 		if ( $source !== '' && ! in_array( $source, [ 'option', 'post' ], true ) ) {
 			throw new InvalidArgumentException(
-				__( 'Invalid --source; expected one of: option, post.', 'pv-redirects' )
+				__( 'Invalid --source; expected one of: option, post.', 'pv-redirects' ) // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
 			);
 		}
 
@@ -202,7 +213,7 @@ final class Cli {
 
 		if ( ! in_array( $format, [ 'table', 'json', 'csv' ], true ) ) {
 			throw new InvalidArgumentException(
-				__( 'Invalid --format; expected one of: table, json, csv.', 'pv-redirects' )
+				__( 'Invalid --format; expected one of: table, json, csv.', 'pv-redirects' ) // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
 			);
 		}
 
@@ -441,8 +452,8 @@ final class Cli {
 			$url = 'http://'.$url;
 		}
 
-		$host     = (string) parse_url( $url, PHP_URL_HOST );
-		$homeHost = (string) parse_url( home_url(), PHP_URL_HOST );
+		$host     = (string) wp_parse_url( $url, PHP_URL_HOST );
+		$homeHost = (string) wp_parse_url( home_url(), PHP_URL_HOST );
 
 		if ( $host !== '' && $homeHost !== '' && strtolower( $host ) !== strtolower( $homeHost ) ) {
 			WP_CLI::warning(
@@ -455,10 +466,10 @@ final class Cli {
 			);
 		}
 
-		$path  = (string) parse_url( $url, PHP_URL_PATH );
-		$query = (string) parse_url( $url, PHP_URL_QUERY );
+		$path  = (string) wp_parse_url( $url, PHP_URL_PATH );
+		$query = (string) wp_parse_url( $url, PHP_URL_QUERY );
 
-		$homePath = (string) parse_url( home_url(), PHP_URL_PATH );
+		$homePath = (string) wp_parse_url( home_url(), PHP_URL_PATH );
 
 		if ( $homePath !== '' && $homePath !== '/' && str_starts_with( $path, $homePath ) ) {
 			$path = substr( $path, strlen( $homePath ) );
@@ -533,7 +544,7 @@ final class Cli {
 			: '';
 
 		if ( $value === '' ) {
-			throw new InvalidArgumentException( $usage );
+			throw new InvalidArgumentException( $usage ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
 		}
 
 		return $value;
@@ -560,8 +571,8 @@ final class Cli {
 		throw new InvalidArgumentException(
 			sprintf(
 				/* translators: %s: raw --status value. */
-				__( 'Invalid --status "%1$s"; expected one of: 301, 302, 307, 308.', 'pv-redirects' ),
-				is_scalar( $raw ) ? (string) $raw : gettype( $raw )
+				__( 'Invalid --status "%1$s"; expected one of: 301, 302, 307, 308.', 'pv-redirects' ), // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
+				is_scalar( $raw ) ? (string) $raw : gettype( $raw ) // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception text is handled at its output boundary.
 			)
 		);
 	}

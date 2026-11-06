@@ -468,6 +468,13 @@ final class RedirectHandlerTest extends TestCase {
 		);
 	}
 
+	public function testCanonicalRecognizesSlashedBypassParameter(): void {
+		$this->seedMap( self::makeMap( [ '/old/' => [ 'to' => '/new/', 'status' => 301, 'src' => 'o' ] ] ) );
+		$_GET['action'] = 'no\\-redirect';
+
+		static::assertSame( 'http://example.org/orig', RedirectHandler::canonical( 'http://example.org/orig', 'http://localhost/old/' ) );
+	}
+
 	public function testCanonicalWithoutMapReturnsOriginal(): void {
 		static::assertSame(
 			'http://example.org/orig',

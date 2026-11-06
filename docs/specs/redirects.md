@@ -66,6 +66,7 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
   a path key.
 - Report ends by instructing the operator to deactivate QPPR (both plugins at `init:1` would
   double-redirect).
+- Migration loads through the production plugin classmap without Composer or development dependencies.
 
 ### Admin, CLI, REST
 
@@ -78,6 +79,14 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
   `test`. Non-interactive, JSON/CSV output for automation.
 - REST `pv-redirects/v1` (capability `manage_options`): redirects CRUD + settings. Success bodies
   are `{success, data}`; errors are standard `WP_Error` bodies with `pv_redirects_*` codes.
+- Collection `PUT /redirects` and `DELETE /redirects` accept the exact request key in JSON data;
+  the admin uses these routes so encoded slashes never enter URL paths. Existing item routes
+  remain supported. Literal percent escapes, plus signs, query strings, and wildcards in JSON
+  keys are preserved (ADR-0008).
+- Admin scripts load the dependencies declared by their committed build manifests. The JSX
+  runtime fallback remains available on WordPress 6.4/6.5.
+- Request globals used for routing are checked as scalar strings and unslashed before parsing;
+  URL characters are preserved for matching and query-string handling.
 
 ## Acceptance criteria
 
@@ -88,6 +97,7 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
 - Migration contract: happy path, type mapping, idempotency, dry-run, delete-source scoping,
   settings mapping, wildcard migration (`tests/MigratorTest.php`)
 - REST contract incl. error taxonomy and permissions (`tests/RestControllerTest.php`)
+- Standalone production class loading and admin manifest dependencies (`tests/ProductionBootstrapTest.php`)
 - Read path performs no DB beyond the single map option (enforced by review + phpstan, per
   `docs/decisions/0002`)
 
@@ -112,3 +122,4 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
 - [0004: Wildcard matching semantics](../decisions/0004-wildcard-semantics.md)
 - [0005: Drop QPPR's jQuery-era features](../decisions/0005-drop-jquery-era-features.md)
 - [0006: Per-post redirects require an admin capability by default](../decisions/0006-per-post-redirect-capability.md)
+- [0008: Send redirect mutation keys in JSON bodies](../decisions/0008-redirect-keys-in-json.md)
