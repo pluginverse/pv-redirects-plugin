@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-07
+
+### Fixed
+
+- Match query strings without regard to case when case-sensitive matching is disabled, including on existing installations.
+- Import same-site full URL sources from Quick Page/Post Redirect as site-relative paths, preserving their query strings and warning about conflicting or unsupported sources.
+
+### Added
+
+- Add a release preparation command that synchronizes version metadata and changelogs, and uses the same notes for GitHub releases.
+
 ## [1.0.1] - 2026-11-07
 
 ### Fixed

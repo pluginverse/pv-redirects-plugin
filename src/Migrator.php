@@ -196,6 +196,7 @@ final class Migrator {
 
 					if ( $request === null ) {
 						$warnings[] = sprintf(
+							/* translators: %s: quick redirect request key. */
 							__( 'Skipped quick redirect "%s": its request key carries a URL scheme or is outside this site — review it.', 'pv-redirects' ),
 							$key
 						);
@@ -212,6 +213,7 @@ final class Migrator {
 						}
 					}
 					if ( $collision ) {
+						/* translators: %s: quick redirect request key. */
 						$warnings[] = sprintf( __( 'Skipped quick redirect "%s": its normalized key conflicts with an existing redirect — review it.', 'pv-redirects' ), $key );
 						continue;
 					}
@@ -222,6 +224,7 @@ final class Migrator {
 						++$quick['skipped_existing'];
 						$existing = $pvRows[$request] ?? $pendingOptionRows[$request];
 						if ( ! is_array( $existing ) || ( $existing['to'] ?? null ) !== $value || ( $existing['status'] ?? null ) !== $quickStatus ) {
+							/* translators: %s: quick redirect request key. */
 							$warnings[] = sprintf( __( 'Skipped quick redirect "%s": the existing redirect differs — review it.', 'pv-redirects' ), $key );
 							continue;
 						}
