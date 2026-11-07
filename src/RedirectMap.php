@@ -8,6 +8,7 @@ use function do_action;
 use function get_option;
 use function get_permalink;
 use function home_url;
+use function in_array;
 use function is_array;
 use function is_string;
 use function wp_parse_url;
@@ -35,7 +36,7 @@ final class RedirectMap {
 
 	private const OPTION = 'pv_redirects_map';
 
-	private const SCHEMA_VERSION = 1;
+	private const SCHEMA_VERSION = 2;
 
 	/**
 	 * Recompute the map from `pv_redirects` + active per-post meta + settings and persist it.
@@ -131,12 +132,20 @@ final class RedirectMap {
 	public static function getShape(): array {
 		$stored = get_option( self::OPTION, [ 'v' => 0 ] );
 
-		if ( ! is_array( $stored ) || ( $stored['v'] ?? 0 ) !== self::SCHEMA_VERSION ) {
+		if ( ! is_array( $stored ) || ! in_array( $stored['v'] ?? 0, [ 1, self::SCHEMA_VERSION ], true ) ) {
 			return [ 'v' => 0 ];
 		}
 
 		/** @var Map $stored */
 		return $stored;
+	}
+
+	/** Upgrade an old snapshot outside the frontend read path. */
+	public static function upgrade(): void {
+		$map = self::getShape();
+		if ( $map['v'] === 1 ) {
+			self::rebuild();
+		}
 	}
 
 	/**

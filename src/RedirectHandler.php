@@ -181,6 +181,15 @@ final class RedirectHandler {
 		if ( $query !== '' ) {
 			$rule = $exact[Matcher::normalizeExactKey( $path.'?'.$query, $case_sensitive )] ?? null;
 
+			if ( $map['v'] === 1 && ! $case_sensitive ) {
+				$normalized = Matcher::normalizeExactKey( $path.'?'.$query, false );
+				foreach ( $exact as $legacy_key => $legacy_rule ) {
+					if ( Matcher::normalizeExactKey( $legacy_key, false ) === $normalized ) {
+						$rule = $legacy_rule;
+					}
+				}
+			}
+
 			if ( $rule !== null ) {
 				return [ 'rule' => $rule, 'captures' => [] ];
 			}

@@ -5,9 +5,9 @@ description: Verify a release archive and publish a tagged version to GitHub and
 
 ## Prepare
 
-Set the plugin header, `readme.txt` stable tag, and `package.json` version to the same numeric `X.Y.Z`, update the lockfile, and commit the release. Build the committed bundles and run the checks in [Testing](testing.md). Run `npm run package` to create `dist/pv-redirects.zip`; `python3 scripts/package.py --tag vX.Y.Z --verify dist/pv-redirects.zip` verifies its exact contents against the checkout. Inspect and install the archive before release. The archive is reproducible from identical source and excludes listing artwork and development files.
+Write release notes under `## [Unreleased]` in `CHANGELOG.md`, then run `python3 scripts/release.py prepare X.Y.Z`. Review the synchronized versions and `readme.txt` changelog, then commit the release. `python3 scripts/release.py notes X.Y.Z` prints the notes used for the GitHub release and annotated tag. Build the committed bundles and run the checks in [Testing](testing.md). Run `npm run package` to create `dist/pv-redirects.zip`; `python3 scripts/package.py --tag vX.Y.Z --verify dist/pv-redirects.zip` verifies its exact contents against the checkout. Inspect and install the archive before release. The archive is reproducible from identical source and excludes listing artwork and development files.
 
-After review, push tag `vX.Y.Z` at the release commit. The GitHub release workflow checks version agreement, tests, static analysis, lint, committed build output, and packaging before attaching `pv-redirects.zip` to the release. A mismatch or prerelease version fails. Avoid moving release tags.
+After review, create an annotated tag with `python3 scripts/release.py notes X.Y.Z > /tmp/pv-release-notes.txt` and `git tag -a vX.Y.Z -F /tmp/pv-release-notes.txt`, then push that tag at the release commit. The GitHub release workflow checks version agreement, tests, static analysis, lint, committed build output, and packaging before attaching `pv-redirects.zip` to the release. A mismatch or prerelease version fails. Avoid moving release tags.
 
 ## WordPress.org
 

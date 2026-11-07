@@ -67,6 +67,35 @@ final class MigratorTest extends TestCase {
 
 	// ---------------------------------------------------------------- happy path
 
+	public function testSameSiteAbsoluteSourceIsImportedAndForeignSourceIsPreserved(): void {
+		$home = rtrim( home_url(), '/' );
+		update_option( 'quickppr_redirects', [ $home.'/Full/?Route=One' => '/target', 'https://foreign.invalid/full/' => '/other' ] );
+		$report = Migrator::migrate();
+		static::assertSame( 1, $report['quick']['migrated'] );
+		static::assertArrayHasKey( '/Full/?Route=One', get_option( 'pv_redirects' ) );
+		static::assertStringContainsString( 'foreign.invalid', self::warnings( $report ) );
+	}
+
+	public function testSubdirectorySourcesAndConflictsAreSafeDuringCleanup(): void {
+		$home = get_option( 'home' );
+		update_option( 'home', 'https://example.test/site' );
+		try {
+			update_option( 'pv_redirects', [ '/Clash?Q=ONE' => [ 'to' => '/existing', 'status' => 301 ] ] );
+			update_option( 'quickppr_redirects', [
+				'https://example.test/site/Full/?Route=One' => '/target',
+				'https://example.test/site/clash?q=one' => '/conflict',
+				'https://example.test/sitewide/no' => '/outside',
+			] );
+			$report = Migrator::migrate( [], [ 'delete_source' => true ] );
+			static::assertSame( 1, $report['quick']['migrated'] );
+			static::assertArrayHasKey( '/Full/?Route=One', get_option( 'pv_redirects' ) );
+			static::assertCount( 2, get_option( 'quickppr_redirects' ) );
+			static::assertStringContainsString( 'conflicts', self::warnings( $report ) );
+		} finally {
+			update_option( 'home', $home );
+		}
+	}
+
 	public function testMigrateCopiesQuickRowsAndPostMetaAndRebuildsMap(): void {
 		[ $active, $inactive ] = $this->seedLegacyFixtures();
 
@@ -120,7 +149,7 @@ final class MigratorTest extends TestCase {
 		$map = get_option( 'pv_redirects_map' );
 
 		static::assertIsArray( $map );
-		static::assertSame( 1, $map['v'] );
+		static::assertSame( 2, $map['v'] );
 		static::assertSame( [ 'to' => '/new-home/', 'status' => 301, 'src' => 'o' ], $map['exact']['/legacy-page/'] );
 		static::assertSame( [ 'to' => 'https://example.com/about/', 'status' => 301, 'src' => 'o' ], $map['exact']['/about.htm'] );
 		static::assertSame( [ 'to' => '/press/', 'status' => 301, 'src' => 'o' ], $map['exact']['/2024-press/?utm=x'] );
@@ -454,7 +483,7 @@ final class MigratorTest extends TestCase {
 		$map = get_option( 'pv_redirects_map' );
 
 		static::assertIsArray( $map );
-		static::assertSame( 1, $map['v'] );
+		static::assertSame( 2, $map['v'] );
 		static::assertSame( [], $map['exact'] );
 		static::assertSame( [], $map['wildcards'] );
 		static::assertSame( [], $map['posts'] );

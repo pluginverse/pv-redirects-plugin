@@ -15,6 +15,7 @@ use function delete_post_meta;
 use function get_option;
 use function get_post_meta;
 use function get_post_types;
+use function home_url;
 use function in_array;
 use function is_array;
 use function is_int;
@@ -191,25 +192,39 @@ final class Migrator {
 						continue;
 					}
 
-					// Map keys are path-only, so a key carrying a URL scheme (mailto:…,
-					// https://…) can never match a request — skip it for manual review.
-					$key_scheme = wp_parse_url( $key, PHP_URL_SCHEME );
+					$request = self::sourceKey( $key );
 
-					if ( is_string( $key_scheme ) && $key_scheme !== '' ) {
+					if ( $request === null ) {
 						$warnings[] = sprintf(
-							/* translators: %s: quick redirect request key. */
-							__( 'Skipped quick redirect "%1$s": its request key carries a URL scheme, and map keys are path-only, so it can never match a request — review it.', 'pv-redirects' ),
+							__( 'Skipped quick redirect "%s": its request key carries a URL scheme or is outside this site — review it.', 'pv-redirects' ),
 							$key
 						);
 						continue;
 					}
 
-					$request = self::normalizeQuickKey( $key );
+					// Do not import a differently spelled key that would shadow a rule.
+					$case_sensitive = $settingsPlan['report']['case_sensitive'] ?? Settings::all()['case_sensitive'];
+					$collision = false;
+					foreach ( $pvRows + $pendingOptionRows as $existing_key => $existing_row ) {
+						if ( is_string( $existing_key ) && $existing_key !== $request && Matcher::normalizeExactKey( $existing_key, $case_sensitive ) === Matcher::normalizeExactKey( $request, $case_sensitive ) ) {
+							$collision = true;
+							break;
+						}
+					}
+					if ( $collision ) {
+						$warnings[] = sprintf( __( 'Skipped quick redirect "%s": its normalized key conflicts with an existing redirect — review it.', 'pv-redirects' ), $key );
+						continue;
+					}
 
 					// Present in the PV store: previously migrated or manually created. Never
 					// overwrite — skip and count (docs/decisions/0003 idempotency).
 					if ( array_key_exists( $request, $pvRows ) || array_key_exists( $request, $pendingOptionRows ) ) {
 						++$quick['skipped_existing'];
+						$existing = $pvRows[$request] ?? $pendingOptionRows[$request];
+						if ( ! is_array( $existing ) || ( $existing['to'] ?? null ) !== $value || ( $existing['status'] ?? null ) !== $quickStatus ) {
+							$warnings[] = sprintf( __( 'Skipped quick redirect "%s": the existing redirect differs — review it.', 'pv-redirects' ), $key );
+							continue;
+						}
 						$deleteQuickKeys[] = $key;
 						++$quickTotals['handled'];
 						continue;
@@ -579,6 +594,34 @@ final class Migrator {
 		}
 
 		return $dropped;
+	}
+
+	/** Convert absolute same-site sources without decoding path or query bytes. */
+	private static function sourceKey( string $key ): ?string {
+		$key = trim( $key );
+		$scheme = wp_parse_url( $key, PHP_URL_SCHEME );
+		if ( ! is_string( $scheme ) || $scheme === '' ) {
+			return self::normalizeQuickKey( $key );
+		}
+		$url = wp_parse_url( $key );
+		$home = wp_parse_url( home_url() );
+		if ( ! is_array( $url ) || ! is_array( $home ) || ! in_array( strtolower( $scheme ), [ 'http', 'https' ], true ) || ! isset( $url['host'], $home['host'] ) || strtolower( $url['host'] ) !== strtolower( $home['host'] ) || isset( $url['user'] ) || isset( $url['pass'] ) || isset( $url['fragment'] ) ) {
+			return null;
+		}
+		$port = $url['port'] ?? ( strtolower( $scheme ) === 'https' ? 443 : 80 );
+		$home_port = $home['port'] ?? ( ( $home['scheme'] ?? '' ) === 'https' ? 443 : 80 );
+		if ( $port !== $home_port ) {
+			return null;
+		}
+		$path = $url['path'] ?? '/';
+		$prefix = rtrim( $home['path'] ?? '', '/' );
+		if ( $prefix !== '' ) {
+			if ( $path !== $prefix && ! str_starts_with( $path, $prefix.'/' ) ) {
+				return null;
+			}
+			$path = substr( $path, strlen( $prefix ) );
+		}
+		return self::normalizeQuickKey( ( $path === '' ? '/' : $path ).( isset( $url['query'] ) ? '?'.$url['query'] : '' ) );
 	}
 
 	/**

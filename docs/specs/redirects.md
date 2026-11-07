@@ -39,7 +39,7 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
 - Request path is site-relative (home URL and subdirectory prefix stripped). Cascade: exact key
   including embedded query string → exact path → path with trailing slash toggled → wildcards in
   insertion order → no match.
-- Case-insensitive by default (keys case-folded at build and match); `case_sensitive` flips both.
+- Case-insensitive by default for both paths and query strings (keys case-folded at build and match); `case_sensitive` preserves both. Legacy maps remain readable until an admin request rebuilds them.
 - Wildcards: `*` = run of non-slash characters, a final `/*` = the entire remaining path,
   `*` in the destination is substituted with the matched text. Exact always beats wildcard; first
   wildcard wins; the wildcard pass tolerates a trailing-slash difference like exact keys do;
@@ -61,9 +61,7 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
   verified as migrated). Idempotent: previously migrated keys/posts are counted as
   `skipped_existing`, never duplicated.
 - Dropped QPPR features (new-window, nofollow, link rewriting, meta-refresh) are counted and
-  warned, never silent: type `meta` and unknown types downgrade to 301 with warnings; request keys
-  carrying a URL scheme (e.g. `mailto:…`) are skipped with a review warning — they can never match
-  a path key.
+  warned, never silent: type `meta` and unknown types downgrade to 301 with warnings; same-site HTTP(S) source URLs within the home path become site-relative keys with query bytes preserved. Foreign, invalid, and unsupported URL sources are skipped with a review warning. Conflicting normalized keys are retained in QPPR for review, including with `--delete-source`.
 - Report ends by instructing the operator to deactivate QPPR (both plugins at `init:1` would
   double-redirect).
 - Migration loads through the production plugin classmap without Composer or development dependencies.

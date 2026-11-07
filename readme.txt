@@ -3,7 +3,7 @@ Tags: redirects, redirect, wildcard, migration, seo
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -49,6 +49,16 @@ Yes. Use the Redirect panel in the editor for a public post type. By default, ma
 4. Redirect settings.
 
 == Changelog ==
+
+= 1.0.1 =
+Fixed:
+
+* Match query strings without regard to case when case-sensitive matching is disabled, including on existing installations.
+* Import same-site full URL sources from Quick Page/Post Redirect as site-relative paths, preserving their query strings and warning about conflicting or unsupported sources.
+
+Added:
+
+* Add a release preparation command that synchronizes version metadata and changelogs, and uses the same notes for GitHub releases.
 
 = 1.0.0 =
 * Initial release with quick and per-post redirects, wildcards, WP-CLI, and QPPR migration.

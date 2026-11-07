@@ -30,7 +30,7 @@ final class MatcherTest extends TestCase {
 	public static function normalizeExactKeyProvider(): array {
 		return [
 			'no query falls back to path normalize' => [ '/Path', false, '/path' ],
-			'path folded, query kept raw'           => [ '/Path/?Q=1&X=Y', false, '/path/?Q=1&X=Y' ],
+			'path and query folded'                 => [ '/Path/?Q=1&X=Y', false, '/path/?q=1&x=y' ],
 			'sensitive keeps both verbatim'         => [ '/Path/?q=1', true, '/Path/?q=1' ],
 			'leading slash added to path part only' => [ 'path?a=1', false, '/path?a=1' ],
 			'encoded query stays untouched'         => [ '/a/?utm_source=x%20y', false, '/a/?utm_source=x%20y' ],

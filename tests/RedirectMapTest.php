@@ -24,13 +24,22 @@ final class RedirectMapTest extends TestCase {
 		$this->set_permalink_structure( '/%postname%/' );
 	}
 
+	public function testUpgradeRebuildsLegacyMap(): void {
+		update_option( 'pv_redirects', [ '/Old/?Route=One' => [ 'to' => '/target', 'status' => 301 ] ] );
+		update_option( 'pv_redirects_map', [ 'v' => 1, 'built' => 0, 'settings' => self::defaultSettings(), 'exact' => [], 'wildcards' => [], 'posts' => [] ] );
+		RedirectMap::upgrade();
+		$map = get_option( 'pv_redirects_map' );
+		static::assertSame( 2, $map['v'] );
+		static::assertArrayHasKey( '/old/?route=one', $map['exact'] );
+	}
+
 	public function testRebuildBuildsExactRowsFromOption(): void {
 		OptionStore::set( '/old-page/', '/new-page/', 301 );
 		OptionStore::set( '/2019/press/', 'https://ext.example/pr', 302 );
 
 		$map = RedirectMap::get();
 
-		static::assertSame( 1, $map['v'] );
+		static::assertSame( 2, $map['v'] );
 		static::assertGreaterThan( 0, $map['built'] );
 		static::assertSame( [ 'to' => '/new-page/', 'status' => 301, 'src' => 'o' ], $map['exact']['/old-page/'] );
 		static::assertSame( [ 'to' => 'https://ext.example/pr', 'status' => 302, 'src' => 'o' ], $map['exact']['/2019/press/'] );

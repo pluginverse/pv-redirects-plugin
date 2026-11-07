@@ -12,6 +12,7 @@ Produce a verifiable installable archive from each release tag and publish that 
 
 - `npm run package` creates `dist/pv-redirects.zip` with one `pv-redirects/` root. It includes the bootstrap, `uninstall.php`, `src/`, committed `build/`, `languages/` when present, `readme.txt`, `LICENSE`, and Composer metadata. Development dependencies, tests, source tooling, documentation, and listing artwork are excluded.
 - The plugin header, readme stable tag, and package version must all match numeric `X.Y.Z`. If supplied, the Git tag must be `vX.Y.Z` with the same version. Prereleases and mismatches fail.
+- `python3 scripts/release.py prepare X.Y.Z` moves Unreleased notes into a dated release, updates the plugin, package and lockfile versions, and adds the same notes to `readme.txt`. The tag workflow extracts GitHub release notes from `CHANGELOG.md`.
 - A tag workflow runs checks and attaches the verified archive to its GitHub release. A separate manual workflow downloads that release archive, verifies its files against the selected tag, and deploys it to SVN trunk and a new numeric tag. Existing SVN tags are never overwritten.
 - The manual workflow publishes tagged `.wordpress-org/` artwork to the SVN assets directory. Numbered screenshots correspond to readme captions and never enter the plugin archive.
 - Listing artwork uses the Pluginverse standalone plug/orbit symbol from the canonical branding repository, with source provenance and usage recorded in the listing guide. It does not use the text-logo lockup or a PR monogram.

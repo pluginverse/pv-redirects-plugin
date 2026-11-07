@@ -37,7 +37,10 @@ jobs:
         uses: WordPress/plugin-check-action@v1
         with:
           build-dir: ./dist/plugin-check/pv-redirects
+      - name: Extract release notes
+        run: python3 scripts/release.py notes "$GITHUB_REF_NAME" > "$RUNNER_TEMP/release-notes.md"
       - uses: softprops/action-gh-release@v2
         with:
+          body_path: ${{ runner.temp }}/release-notes.md
           files: dist/pv-redirects.zip
           fail_on_unmatched_files: true

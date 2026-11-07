@@ -49,18 +49,9 @@ final class Matcher {
 		return $case_sensitive ? $path : strtolower( $path );
 	}
 
-	/**
-	 * Normalize an exact-map key, keeping any embedded query string raw (QPPR parity: keys
-	 * like '/path/?q=1' are indexed with only their path portion normalized).
-	 */
+	/** Normalize the complete exact key, including its query string. */
 	public static function normalizeExactKey( string $key, bool $case_sensitive ): string {
-		$qpos = strpos( $key, '?' );
-
-		if ( $qpos === false ) {
-			return self::normalizeKey( $key, $case_sensitive );
-		}
-
-		return self::normalizeKey( substr( $key, 0, $qpos ), $case_sensitive ).substr( $key, $qpos );
+		return self::normalizeKey( $key, $case_sensitive );
 	}
 
 	/**

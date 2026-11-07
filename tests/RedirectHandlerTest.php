@@ -129,11 +129,13 @@ final class RedirectHandlerTest extends TestCase {
 		);
 	}
 
-	public function testMatchPathQueryIsCaseSensitiveEvenWhenPathMatchingIsNot(): void {
+	public function testMatchPathQueryFollowsCaseSensitivity(): void {
 		$rule = [ 'to' => '/qs-target/', 'status' => 301, 'src' => 'o' ];
 		$map  = self::makeMap( [ '/path/?q=1' => $rule ] );
 
-		static::assertNull( self::invokeHandler( 'matchPath', [ $map, '/path/', 'Q=1' ] ) );
+		static::assertNotNull( self::invokeHandler( 'matchPath', [ $map, '/path/', 'Q=1' ] ) );
+		$sensitive = self::makeMap( [ '/path/?q=1' => $rule ], [], [], self::customSettings( true, true ) );
+		static::assertNull( self::invokeHandler( 'matchPath', [ $sensitive, '/path/', 'Q=1' ] ) );
 	}
 
 	public function testMatchPathHitsPlainPath(): void {
@@ -196,6 +198,13 @@ final class RedirectHandlerTest extends TestCase {
 
 		static::assertNull( self::invokeHandler( 'matchPath', [ $sensitive, '/old-page/', '' ] ) );
 		static::assertNotNull( self::invokeHandler( 'matchPath', [ $sensitive, '/Old-Page/', '' ] ) );
+	}
+
+	public function testLegacyMapMatchesQueryCaseInsensitively(): void {
+		$rule = [ 'to' => '/target', 'status' => 301, 'src' => 'o' ];
+		$map = self::makeMap( [ '/old/?route=One' => $rule ] );
+		$map['v'] = 1;
+		static::assertSame( $rule, self::invokeHandler( 'matchPath', [ $map, '/old/', 'route=one' ] )['rule'] );
 	}
 
 	public function testMatchPathExactBeatsWildcard(): void {
