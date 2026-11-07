@@ -37,7 +37,7 @@ Update changelog, readme and release guide with command and patch notes.
 
 ## Decisions
 
-Existing ADR-0002, ADR-0003 and ADR-0007 remain binding.
+Existing ADR-0002, ADR-0003 and ADR-0007 remain binding. [ADR-0009](../decisions/0009-release-notes-and-map-upgrades.md) records map upgrades and release notes.
 
 ## Tasks
 
