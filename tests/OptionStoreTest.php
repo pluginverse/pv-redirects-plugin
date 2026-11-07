@@ -102,7 +102,7 @@ final class OptionStoreTest extends TestCase {
 		$map = get_option( 'pv_redirects_map' );
 
 		static::assertIsArray( $map );
-		static::assertSame( 2, $map['v'], 'A store mutation must produce a v2 map' );
+		static::assertSame( 3, $map['v'], 'A store mutation must produce a v3 map' );
 		static::assertSame( [ 'to' => '/bar/', 'status' => 302, 'src' => 'o' ], $map['exact']['/foo'] );
 	}
 

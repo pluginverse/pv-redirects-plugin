@@ -24,12 +24,85 @@ final class RedirectMapTest extends TestCase {
 		$this->set_permalink_structure( '/%postname%/' );
 	}
 
+	public function testComputesPostToQuickChainWithoutChangingSource(): void {
+		$post = self::factory()->post->create( [ 'post_name' => 'chain-start' ] );
+		update_post_meta( $post, PostMetaStore::META_TO, '/middle/' );
+		update_post_meta( $post, PostMetaStore::META_ACTIVE, '1' );
+		OptionStore::set( '/middle/', '/end/', 301 );
+		$map = RedirectMap::rebuild();
+		static::assertSame( '/middle/', $map['exact']['/chain-start/']['to'] );
+		static::assertSame( '/end/', $map['exact']['/chain-start/']['resolved_to'] );
+		static::assertSame( '/end/', $map['posts'][$post]['resolved_to'] );
+		static::assertSame( '/middle/', get_post_meta( $post, PostMetaStore::META_TO, true ) );
+	}
+
+	public function testUnsafeChainsAndCyclesAreNotCollapsed(): void {
+		update_option( 'pv_redirects', [
+			'/a' => [ 'to' => '/b', 'status' => 301 ],
+			'/b' => [ 'to' => '/a', 'status' => 301 ],
+			'/x' => [ 'to' => '/y', 'status' => 301 ],
+			'/y' => [ 'to' => '/end', 'status' => 302 ],
+			'/q' => [ 'to' => '/middle', 'status' => 301 ],
+			'/middle' => [ 'to' => '/end', 'status' => 301 ],
+			'/middle?Key=Value' => [ 'to' => '/other', 'status' => 301 ],
+		] );
+		$map = RedirectMap::rebuild();
+		foreach ( [ '/a', '/b', '/x', '/q' ] as $key ) {
+			static::assertArrayNotHasKey( 'resolved_to', $map['exact'][$key] );
+		}
+	}
+
+	public function testChainRebuildHonorsChangesAndSlashMatching(): void {
+		OptionStore::set( '/first', '/MIDDLE', 301 );
+		OptionStore::set( '/middle/', '/end', 301 );
+		static::assertSame( '/end', RedirectMap::get()['exact']['/first']['resolved_to'] );
+		OptionStore::set( '/middle/', '/new', 301 );
+		static::assertSame( '/new', RedirectMap::get()['exact']['/first']['resolved_to'] );
+		OptionStore::delete( '/middle/' );
+		static::assertArrayNotHasKey( 'resolved_to', RedirectMap::get()['exact']['/first'] );
+	}
+
+	public function testChainDoesNotTraverseWordPressBypassPaths(): void {
+		update_option( 'pv_redirects', [
+			'/a' => [ 'to' => '/wp-json/example', 'status' => 301 ],
+			'/wp-json/example' => [ 'to' => '/end', 'status' => 301 ],
+			'/b' => [ 'to' => '/wp-admin/edit.php', 'status' => 301 ],
+			'/wp-admin/edit.php' => [ 'to' => '/end', 'status' => 301 ],
+		] );
+		$map = RedirectMap::rebuild();
+		static::assertArrayNotHasKey( 'resolved_to', $map['exact']['/a'] );
+		static::assertArrayNotHasKey( 'resolved_to', $map['exact']['/b'] );
+	}
+
+	public function testNonPermanentAndAmbiguousDestinationsStayUnchanged(): void {
+		update_option( 'pv_redirects', [
+			'/a' => [ 'to' => '/middle?x=1', 'status' => 301 ],
+			'/b' => [ 'to' => '/middle#fragment', 'status' => 301 ],
+			'/c' => [ 'to' => '/middle', 'status' => 307 ],
+			'/d' => [ 'to' => 'https://external.test/middle', 'status' => 301 ],
+			'/middle' => [ 'to' => '/end', 'status' => 301 ],
+		] );
+		$map = RedirectMap::rebuild();
+		foreach ( [ '/a', '/b', '/c', '/d' ] as $key ) {
+			static::assertArrayNotHasKey( 'resolved_to', $map['exact'][$key] );
+		}
+	}
+
+	public function testVersionTwoMapIsReadableAndUpgraded(): void {
+		$old = RedirectMap::rebuild();
+		$old['v'] = 2;
+		update_option( 'pv_redirects_map', $old );
+		static::assertSame( 2, RedirectMap::get()['v'] );
+		RedirectMap::upgrade();
+		static::assertSame( 3, RedirectMap::get()['v'] );
+	}
+
 	public function testUpgradeRebuildsLegacyMap(): void {
 		update_option( 'pv_redirects', [ '/Old/?Route=One' => [ 'to' => '/target', 'status' => 301 ] ] );
 		update_option( 'pv_redirects_map', [ 'v' => 1, 'built' => 0, 'settings' => self::defaultSettings(), 'exact' => [], 'wildcards' => [], 'posts' => [] ] );
 		RedirectMap::upgrade();
 		$map = get_option( 'pv_redirects_map' );
-		static::assertSame( 2, $map['v'] );
+		static::assertSame( 3, $map['v'] );
 		static::assertArrayHasKey( '/old/?route=one', $map['exact'] );
 	}
 
@@ -39,7 +112,7 @@ final class RedirectMapTest extends TestCase {
 
 		$map = RedirectMap::get();
 
-		static::assertSame( 2, $map['v'] );
+		static::assertSame( 3, $map['v'] );
 		static::assertGreaterThan( 0, $map['built'] );
 		static::assertSame( [ 'to' => '/new-page/', 'status' => 301, 'src' => 'o' ], $map['exact']['/old-page/'] );
 		static::assertSame( [ 'to' => 'https://ext.example/pr', 'status' => 302, 'src' => 'o' ], $map['exact']['/2019/press/'] );

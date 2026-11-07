@@ -118,7 +118,7 @@ final class RedirectHandler {
 			return $redirect_url;
 		}
 
-		$url = Matcher::resolveDestination( $match['rule']['to'], $match['captures'], home_url() );
+		$url = Matcher::resolveDestination( $match['rule']['resolved_to'] ?? $match['rule']['to'], $match['captures'], home_url() );
 
 		if ( $map['settings']['preserve_qs'] && $query !== '' ) {
 			$url = Matcher::appendQuery( $url, $query );
@@ -252,7 +252,7 @@ final class RedirectHandler {
 	 * @param  array<string, string>            $captures
 	 */
 	private static function send( array $map, string $request, string $query, array $rule, array $captures ): void {
-		$url = Matcher::resolveDestination( $rule['to'], $captures, home_url() );
+		$url = Matcher::resolveDestination( $rule['resolved_to'] ?? $rule['to'], $captures, home_url() );
 
 		if ( $map['settings']['preserve_qs'] && $query !== '' ) {
 			$url = Matcher::appendQuery( $url, $query );

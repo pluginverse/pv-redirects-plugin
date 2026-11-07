@@ -17,6 +17,7 @@ import { PluginDocumentSettingPanel as EditorPanel } from '@wordpress/editor';
 import { __ } from '@wordpress/i18n';
 import { registerPlugin } from '@wordpress/plugins';
 import { STATUS_OPTIONS } from './status-options';
+import StatusHelp from './components/status-help';
 
 const META_TO = '_pv_redirect_to';
 const META_STATUS = '_pv_redirect_status';
@@ -108,6 +109,7 @@ function RedirectPanel() {
 				onChange={ ( value ) => setMeta( META_STATUS, value ) }
 				__next40pxDefaultSize
 			/>
+			<StatusHelp />
 		</DocumentSettingPanel>
 	);
 }

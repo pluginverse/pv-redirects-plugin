@@ -11,6 +11,8 @@ use function home_url;
 use function in_array;
 use function is_array;
 use function is_string;
+use function preg_match;
+use function str_ends_with;
 use function wp_parse_url;
 use function str_contains;
 use function strpos;
@@ -28,15 +30,15 @@ use function update_option;
  *
  * @phpstan-import-type WildcardRule from Matcher
  *
- * @phpstan-type ExactRule array{to: string, status: int, src: string, id?: int}
- * @phpstan-type PostRule array{to: string, status: int}
+ * @phpstan-type ExactRule array{to: string, status: int, src: string, id?: int, resolved_to?: string}
+ * @phpstan-type PostRule array{to: string, status: int, resolved_to?: string}
  * @phpstan-type Map array{v: int, built: int, settings: array{enabled: bool, case_sensitive: bool, preserve_qs: bool, default_status: int}, exact: array<string, ExactRule>, wildcards: array<int, WildcardRule>, posts: array<int, PostRule>}
  */
 final class RedirectMap {
 
 	private const OPTION = 'pv_redirects_map';
 
-	private const SCHEMA_VERSION = 2;
+	private const SCHEMA_VERSION = 3;
 
 	/**
 	 * Recompute the map from `pv_redirects` + active per-post meta + settings and persist it.
@@ -93,6 +95,29 @@ final class RedirectMap {
 			$posts[$post_id] = [ 'to' => $rule['to'], 'status' => $rule['status'] ];
 		}
 
+		// Resolve against the original index so traversal is independent of iteration order.
+		$original = $exact;
+		$query_paths = [];
+		foreach ( $original as $key => $rule ) {
+			$position = strpos( $key, '?' );
+			if ( $position !== false ) {
+				$query_paths[substr( $key, 0, $position )] = true;
+			}
+		}
+		foreach ( $original as $key => $rule ) {
+			if ( $rule['status'] !== 301 || str_contains( $key, '?' ) ) {
+				continue;
+			}
+			$destination = self::resolveChain( $key, $rule['to'], $original, $query_paths, $case_sensitive );
+			if ( $destination !== null ) {
+				$rule['resolved_to'] = $destination;
+				$exact[$key] = $rule;
+				if ( $rule['src'] === 'p' && isset( $posts[$rule['id']] ) ) {
+					$posts[$rule['id']]['resolved_to'] = $destination;
+				}
+			}
+		}
+
 		$map = [
 			'v'         => self::SCHEMA_VERSION,
 			'built'     => time(),
@@ -107,6 +132,38 @@ final class RedirectMap {
 		do_action( 'pv/redirects/map_rebuilt', $map );
 
 		return $map;
+	}
+
+	/**
+	 * Follow only unambiguous local exact 301 hops. A cycle or hop limit keeps the
+	 * original destination. Canonical rows and hook-visible rule data stay intact.
+	 *
+	 * @param array<string, ExactRule> $exact
+	 * @param array<string, bool> $query_paths
+	 */
+	private static function resolveChain( string $source, string $destination, array $exact, array $query_paths, bool $case_sensitive ): ?string {
+		$visited = [ $source => true ];
+		$original = $destination;
+		for ( $hop = 0; $hop < 100; ++$hop ) {
+			if ( str_starts_with( strtolower( $destination ), '/wp-json/' ) || str_starts_with( strtolower( $destination ), '/wp-admin/' ) || strtolower( $destination ) === '/wp-admin' || ! str_starts_with( $destination, '/' ) || str_starts_with( $destination, '//' ) || str_contains( $destination, '%' ) || str_contains( $destination, '\\' ) || preg_match( '~[?#*]|(?:^|/)\.{1,2}(?:/|$)~', $destination ) === 1 ) {
+				return $destination === $original ? null : $destination;
+			}
+			$key = Matcher::normalizeKey( $destination, $case_sensitive );
+			$toggled = str_ends_with( $key, '/' ) ? substr( $key, 0, -1 ) : $key.'/';
+			if ( isset( $query_paths[$key] ) || isset( $query_paths[$toggled] ) ) {
+				return $destination === $original ? null : $destination;
+			}
+			$next_key = isset( $exact[$key] ) ? $key : $toggled;
+			if ( ! isset( $exact[$next_key] ) || $exact[$next_key]['status'] !== 301 ) {
+				return $destination === $original ? null : $destination;
+			}
+			if ( isset( $visited[$next_key] ) ) {
+				return null;
+			}
+			$visited[$next_key] = true;
+			$destination = $exact[$next_key]['to'];
+		}
+		return null;
 	}
 
 	/**
@@ -132,7 +189,7 @@ final class RedirectMap {
 	public static function getShape(): array {
 		$stored = get_option( self::OPTION, [ 'v' => 0 ] );
 
-		if ( ! is_array( $stored ) || ! in_array( $stored['v'] ?? 0, [ 1, self::SCHEMA_VERSION ], true ) ) {
+		if ( ! is_array( $stored ) || ! in_array( $stored['v'] ?? 0, [ 1, 2, self::SCHEMA_VERSION ], true ) ) {
 			return [ 'v' => 0 ];
 		}
 
@@ -143,7 +200,7 @@ final class RedirectMap {
 	/** Upgrade an old snapshot outside the frontend read path. */
 	public static function upgrade(): void {
 		$map = self::getShape();
-		if ( $map['v'] === 1 ) {
+		if ( $map['v'] === 1 || $map['v'] === 2 ) {
 			self::rebuild();
 		}
 	}

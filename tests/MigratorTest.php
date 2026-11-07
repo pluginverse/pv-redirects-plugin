@@ -149,7 +149,7 @@ final class MigratorTest extends TestCase {
 		$map = get_option( 'pv_redirects_map' );
 
 		static::assertIsArray( $map );
-		static::assertSame( 2, $map['v'] );
+		static::assertSame( 3, $map['v'] );
 		static::assertSame( [ 'to' => '/new-home/', 'status' => 301, 'src' => 'o' ], $map['exact']['/legacy-page/'] );
 		static::assertSame( [ 'to' => 'https://example.com/about/', 'status' => 301, 'src' => 'o' ], $map['exact']['/about.htm'] );
 		static::assertSame( [ 'to' => '/press/', 'status' => 301, 'src' => 'o' ], $map['exact']['/2024-press/?utm=x'] );
@@ -483,7 +483,7 @@ final class MigratorTest extends TestCase {
 		$map = get_option( 'pv_redirects_map' );
 
 		static::assertIsArray( $map );
-		static::assertSame( 2, $map['v'] );
+		static::assertSame( 3, $map['v'] );
 		static::assertSame( [], $map['exact'] );
 		static::assertSame( [], $map['wildcards'] );
 		static::assertSame( [], $map['posts'] );

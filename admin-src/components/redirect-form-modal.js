@@ -13,6 +13,7 @@ import {
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { STATUS_OPTIONS } from '../status-options';
+import StatusHelp from './status-help';
 
 const WILDCARD_HELP = __(
 	'Wildcard: * matches a run of non-slash characters, a trailing /* matches the rest of the path, and a * in the destination is replaced by the matched text.',
@@ -135,6 +136,7 @@ export default function RedirectFormModal( { initial, onSubmit, onClose } ) {
 					onChange={ setStatus }
 					__next40pxDefaultSize
 				/>
+				<StatusHelp />
 				<p>
 					<Button
 						variant="secondary"

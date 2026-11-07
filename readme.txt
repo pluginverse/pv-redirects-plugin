@@ -3,7 +3,7 @@ Tags: redirects, redirect, wildcard, migration, seo
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.0.2
+Stable tag: 1.1.0
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -49,6 +49,12 @@ Yes. Use the Redirect panel in the editor for a public post type. By default, ma
 4. Redirect settings.
 
 == Changelog ==
+
+= 1.1.0 =
+Added:
+
+* Precompute safe permanent redirect chains across quick and per-post rules to reduce browser hops.
+* Explain redirect status choices beside each status selector.
 
 = 1.0.2 =
 Fixed:

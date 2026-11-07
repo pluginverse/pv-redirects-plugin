@@ -119,6 +119,23 @@ final class RedirectHandlerTest extends TestCase {
 
 	// ---------------------------------------------------------------- matchPath
 
+	public function testSendUsesComputedDestinationAndRetainsOriginalRuleForHooks(): void {
+		$rule = [ 'to' => '/middle', 'resolved_to' => '/end', 'status' => 301, 'src' => 'o' ];
+		$probe = [];
+		$cleanup = $this->trapSend( $probe );
+		try {
+			try {
+				self::invokeHandler( 'send', [ self::makeMap(), '/first', 'x=1', $rule, [] ] );
+				static::fail( 'Expected redirect trap' );
+			} catch ( SendTrap $exception ) {
+				static::assertSame( 'pv-redirect-send: '.home_url().'/end?x=1', $exception->getMessage() );
+			}
+			static::assertSame( '/middle', $probe[0][1]['to'] );
+		} finally {
+			$cleanup();
+		}
+	}
+
 	public function testMatchPathHitsQueryEmbeddedExactKey(): void {
 		$rule = [ 'to' => '/qs-target/', 'status' => 301, 'src' => 'o' ];
 		$map  = self::makeMap( [ '/path/?q=1' => $rule ] );

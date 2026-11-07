@@ -16,6 +16,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { getSettings, saveSettings } from '../api';
 import { STATUS_OPTIONS } from '../status-options';
+import StatusHelp from './status-help';
 
 export default function SettingsPanel( { pushNotice } ) {
 	const [ settings, setSettings ] = useState( null );
@@ -162,6 +163,7 @@ export default function SettingsPanel( { pushNotice } ) {
 						}
 						__next40pxDefaultSize
 					/>
+					<StatusHelp />
 					<PanelRow>
 						<Button
 							variant="primary"

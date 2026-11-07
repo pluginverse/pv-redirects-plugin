@@ -40,6 +40,7 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
   including embedded query string → exact path → path with trailing slash toggled → wildcards in
   insertion order → no match.
 - Case-insensitive by default for both paths and query strings (keys case-folded at build and match); `case_sensitive` preserves both. Legacy maps remain readable until an admin request rebuilds them.
+- On rebuild, unambiguous exact 301 chains through local relative paths are precomputed across quick and post redirects. Query-qualified intermediate paths, wildcard-only matches, non-301 rules, unsafe URLs and cycles stop optimization. Original rule data remains intact; intermediate redirect hooks do not fire for eliminated hops. Older maps remain usable until an admin request or write rebuilds them.
 - Wildcards: `*` = run of non-slash characters, a final `/*` = the entire remaining path,
   `*` in the destination is substituted with the matched text. Exact always beats wildcard; first
   wildcard wins; the wildcard pass tolerates a trailing-slash difference like exact keys do;
@@ -68,6 +69,7 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
 
 ### Admin, CLI, REST
 
+- Status defaults to 301; explicit configured statuses remain unchanged. Status selectors provide guidance on permanent, temporary, and method-preserving redirects.
 - Admin page "PV Redirects": redirects table (add/edit/delete via Modal, wildcard-aware warnings,
   two-step destructive delete) and settings panel — built on @wordpress/components, zero jQuery.
 - Editor sidebar panel "Redirect" manages the per-post redirect via REST-registered meta; the
@@ -121,3 +123,5 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
 - [0005: Drop QPPR's jQuery-era features](../decisions/0005-drop-jquery-era-features.md)
 - [0006: Per-post redirects require an admin capability by default](../decisions/0006-per-post-redirect-capability.md)
 - [0008: Send redirect mutation keys in JSON bodies](../decisions/0008-redirect-keys-in-json.md)
+
+- [0010: Precompute safe permanent redirect chains](../decisions/0010-precompute-safe-redirect-chains.md)

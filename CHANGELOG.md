@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-07
+
+### Added
+
+- Precompute safe permanent redirect chains across quick and per-post rules to reduce browser hops.
+- Explain redirect status choices beside each status selector.
+
 ## [1.0.2] - 2026-11-07
 
 ### Fixed
