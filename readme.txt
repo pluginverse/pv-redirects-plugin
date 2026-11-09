@@ -3,7 +3,7 @@ Tags: redirects, redirect, wildcard, migration, seo
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -49,6 +49,15 @@ Yes. Use the Redirect panel in the editor for a public post type. By default, ma
 4. Redirect settings.
 
 == Changelog ==
+
+= 1.1.1 =
+Added:
+
+* Warn about HTML-escaped query separators in new redirect sources and offer a guarded correction in the admin.
+
+Fixed:
+
+* Import QPPR source queries with HTML-escaped ampersands so they match normal HTTP requests.
 
 = 1.1.0 =
 Added:

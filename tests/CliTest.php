@@ -31,6 +31,13 @@ namespace PV\Redirects\Tests {
 			update_post_meta( $this->post_id, '_pprredirect_type', '301' );
 		}
 
+		public function testCreateWarnsAboutEscapedQueryWithoutChangingKey(): void {
+			\WP_CLI::$messages = [];
+			( new Cli() )->create( [ '/p?a=1&amp;b=2', '/target' ] );
+			self::assertNotNull( OptionStore::get( '/p?a=1&amp;b=2' ) );
+			self::assertStringContainsString( 'escaped', implode( ' ', \WP_CLI::$messages ) );
+		}
+
 		public function testDryRunAndDeleteSourceWriteNothing(): void {
 			$map = self::makeMap();
 			update_option( 'pv_redirects_map', $map );

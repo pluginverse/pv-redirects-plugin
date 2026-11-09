@@ -80,6 +80,20 @@ final class RestControllerTest extends TestCase {
 
 	// ---------------------------------------------------------------- create
 
+	public function testGuardedCreateRejectsMatchingExistingKey(): void {
+		OptionStore::set( '/path?a=1&b=2', '/existing', 301 );
+		$response = $this->dispatch( WP_REST_Server::CREATABLE, '/pv-redirects/v1/redirects', [ 'request' => '/PATH?a=1&b=2', 'to' => '/new', 'status' => 301, 'reject_existing' => true ] );
+		$this->assertErrorResponse( $response, 'pv_redirects_conflict', 409 );
+		static::assertSame( '/existing', OptionStore::get( '/path?a=1&b=2' )['to'] );
+	}
+
+	public function testGuardedCreateAcceptsDistinctKeyAndRegularCreateStillUpdates(): void {
+		OptionStore::set( '/one', '/old', 301 );
+		$this->assertSuccessResponse( $this->dispatch( WP_REST_Server::CREATABLE, '/pv-redirects/v1/redirects', [ 'request' => '/two', 'to' => '/new', 'status' => 301, 'reject_existing' => true ] ), 201 );
+		$this->assertSuccessResponse( $this->dispatch( WP_REST_Server::CREATABLE, '/pv-redirects/v1/redirects', [ 'request' => '/one', 'to' => '/updated', 'status' => 301 ] ), 201 );
+		static::assertSame( '/updated', OptionStore::get( '/one' )['to'] );
+	}
+
 	public function testCreateReturns201WithRowAndRebuildsMap(): void {
 		$this->assertSuccessResponse(
 			$this->dispatch( WP_REST_Server::CREATABLE, '/pv-redirects/v1/redirects', [

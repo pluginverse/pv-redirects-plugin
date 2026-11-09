@@ -93,17 +93,18 @@ export default function RedirectsManager( { pushNotice } ) {
 	 * Save the modal form. Editing with a changed request path is a rename: re-create
 	 * under the new key first, then remove the old one, so a rule always exists.
 	 *
-	 * @param {Object} row         Row from the form.
-	 * @param {string} row.request Request path.
-	 * @param {string} row.to      Destination.
-	 * @param {number} row.status  HTTP status.
+	 * @param {Object}  row                Row from the form.
+	 * @param {string}  row.request        Request path.
+	 * @param {string}  row.to             Destination.
+	 * @param {number}  row.status         HTTP status.
+	 * @param {boolean} row.rejectExisting Reject matching existing keys.
 	 */
-	async function handleSave( { request, to, status } ) {
+	async function handleSave( { request, to, status, rejectExisting } ) {
 		const original = modalRow;
 
 		if ( original !== null && original.request !== '' ) {
 			if ( request !== original.request ) {
-				await createRedirect( request, to, status );
+				await createRedirect( request, to, status, rejectExisting );
 				await deleteRedirect( original.request );
 			} else {
 				await updateRedirect( original.request, to, status );
@@ -117,7 +118,7 @@ export default function RedirectsManager( { pushNotice } ) {
 
 			pushNotice( 'success', savedMessage );
 		} else {
-			await createRedirect( request, to, status );
+			await createRedirect( request, to, status, rejectExisting );
 
 			const addedMessage = sprintf(
 				/* translators: %s: request path. */

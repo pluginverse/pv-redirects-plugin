@@ -28,6 +28,15 @@ const WILDCARD_HELP = __(
  */
 export default function RedirectFormModal( { initial, onSubmit, onClose } ) {
 	const [ requestPath, setRequestPath ] = useState( initial.request );
+	const [ corrected, setCorrected ] = useState( false );
+	const queryPosition = requestPath.indexOf( '?' );
+	const prefix =
+		queryPosition < 0
+			? requestPath
+			: requestPath.slice( 0, queryPosition + 1 );
+	const query =
+		queryPosition < 0 ? '' : requestPath.slice( queryPosition + 1 );
+	const correctedQuery = query.replace( /&(?:amp|#0*38|#x0*26);/gi, '&' );
 	const [ destination, setDestination ] = useState( initial.to );
 	const [ status, setStatus ] = useState( String( initial.status ) );
 	const [ errors, setErrors ] = useState( [] );
@@ -71,6 +80,7 @@ export default function RedirectFormModal( { initial, onSubmit, onClose } ) {
 				request: trimmedRequest,
 				to: trimmedDestination,
 				status: Number( status ),
+				rejectExisting: corrected,
 			} );
 		} catch ( error ) {
 			setSubmitError( error.message );
@@ -100,6 +110,28 @@ export default function RedirectFormModal( { initial, onSubmit, onClose } ) {
 						{ submitError }
 					</Notice>
 				) }
+				{ query !== correctedQuery && (
+					<Notice status="warning" isDismissible={ false }>
+						<p>
+							{ __(
+								'This source query contains an HTML-escaped ampersand. Keep it for a literal URL, or replace it with a normal separator.',
+								'pv-redirects'
+							) }
+						</p>
+						<Button
+							variant="secondary"
+							onClick={ () => {
+								setRequestPath( prefix + correctedQuery );
+								setCorrected( true );
+							} }
+						>
+							{ __(
+								'Replace escaped separators',
+								'pv-redirects'
+							) }
+						</Button>
+					</Notice>
+				) }
 				{ requestPath.includes( '*' ) && (
 					<Notice status="warning" isDismissible={ false }>
 						{ WILDCARD_HELP }
@@ -112,7 +144,10 @@ export default function RedirectFormModal( { initial, onSubmit, onClose } ) {
 						'pv-redirects'
 					) }
 					value={ requestPath }
-					onChange={ setRequestPath }
+					onChange={ ( value ) => {
+						setRequestPath( value );
+						setCorrected( false );
+					} }
 					__next40pxDefaultSize
 				/>
 				<TextControl

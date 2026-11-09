@@ -84,6 +84,7 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
   the admin uses these routes so encoded slashes never enter URL paths. Existing item routes
   remain supported. Literal percent escapes, plus signs, query strings, and wildcards in JSON
   keys are preserved (ADR-0008).
+- Admin warns about escaped ampersands in source queries and offers an explicit correction; corrected creates reject matching existing rules. CLI create warns and retains the literal key.
 - Admin scripts load the dependencies declared by their committed build manifests. The JSX
   runtime fallback remains available on WordPress 6.4/6.5.
 - Request globals used for routing are checked as scalar strings and unslashed before parsing;

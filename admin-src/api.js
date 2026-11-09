@@ -47,14 +47,25 @@ export function listRedirects( page ) {
 /**
  * Create one redirect.
  *
- * @param {string} requestPath Request path (site path starting with `/`).
- * @param {string} to          Destination.
- * @param {number} status      HTTP status (301/302/307/308).
+ * @param {string}  requestPath    Request path (site path starting with `/`).
+ * @param {string}  to             Destination.
+ * @param {number}  status         HTTP status (301/302/307/308).
+ * @param {boolean} rejectExisting Reject matching existing keys.
  */
-export function createRedirect( requestPath, to, status ) {
+export function createRedirect(
+	requestPath,
+	to,
+	status,
+	rejectExisting = false
+) {
 	return request( '/redirects', {
 		method: 'POST',
-		data: { request: requestPath, to, status },
+		data: {
+			request: requestPath,
+			to,
+			status,
+			reject_existing: rejectExisting,
+		},
 	} );
 }
 

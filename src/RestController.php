@@ -290,6 +290,16 @@ final class RestController {
 			return $error;
 		}
 
+		if ( $status_code === 201 && $request->get_param( 'reject_existing' ) === true ) {
+			$case_sensitive = Settings::all()['case_sensitive'];
+			$normalized = Matcher::normalizeExactKey( trim( $request_key ), $case_sensitive );
+			foreach ( OptionStore::all() as $existing_key => $existing_row ) {
+				if ( Matcher::normalizeExactKey( $existing_key, $case_sensitive ) === $normalized ) {
+					return self::error( 'pv_redirects_conflict', __( 'A redirect already matches this request. Edit the existing redirect instead.', 'pv-redirects' ), 409 );
+				}
+			}
+		}
+
 		OptionStore::set( $request_key, $to, $status );
 
 		$row = OptionStore::get( $request_key ) ?? [ 'to' => $to, 'status' => $status ];

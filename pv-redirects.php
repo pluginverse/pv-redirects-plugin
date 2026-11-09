@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PV Redirects
  * Description: Fast redirects with wildcard support and a single computed autoloaded map. A modern replacement for Quick Page/Post Redirect.
- * Version: 1.1.0
+ * Version: 1.1.1
  * Requires at least: 6.4
  * Requires PHP: 8.2
  * Author: Spenser Hale
@@ -48,7 +48,7 @@ if ( PHP_VERSION_ID < 80200 ) {
 	return;
 }
 
-define( 'PV_REDIRECTS_VERSION', '1.1.0' );
+define( 'PV_REDIRECTS_VERSION', '1.1.1' );
 define( 'PV_REDIRECTS_PATH', __DIR__.'/' );
 define( 'PV_REDIRECTS_URL', plugin_dir_url( __FILE__ ) );
 

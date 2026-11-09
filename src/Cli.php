@@ -293,6 +293,11 @@ final class Cli {
 		$request = self::stringArg( $args, __( 'Usage: wp pv-redirects create <request> <to> [--status=301]', 'pv-redirects' ) );
 		$to      = self::stringArg( array_slice( $args, 1, 1 ), __( 'Usage: wp pv-redirects create <request> <to> [--status=301]', 'pv-redirects' ) );
 
+		$query_position = strpos( $request, '?' );
+		if ( $query_position !== false && preg_match( '~&(?:amp|#0*38|#x0*26);~i', substr( $request, $query_position + 1 ) ) === 1 ) {
+			WP_CLI::warning( __( 'The request contains an HTML-escaped ampersand in its query. The literal key will be saved; use & if you intended a query separator.', 'pv-redirects' ) );
+		}
+
 		try {
 			$status = self::statusArg( $assoc_args );
 

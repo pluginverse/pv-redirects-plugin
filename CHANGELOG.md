@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-08
+
+### Added
+
+- Warn about HTML-escaped query separators in new redirect sources and offer a guarded correction in the admin.
+
 ### Fixed
 
 - Import QPPR source queries with HTML-escaped ampersands so they match normal HTTP requests.
