@@ -67,6 +67,67 @@ final class MigratorTest extends TestCase {
 
 	// ---------------------------------------------------------------- happy path
 
+	public function testEscapedQpprQueriesMigrateAndMatchRawHttpRequests(): void {
+		$source = '/search/?a=One&#038;b=Two&amp;c=%26';
+		$absolute = rtrim( home_url(), '/' ).'/absolute/?a=1&#x26;b=2';
+		update_option( 'quickppr_redirects', [ $source => '/target?x=1&amp;y=2', $absolute => '/end' ] );
+		$dry = Migrator::migrate( [], [ 'dry_run' => true ] );
+		static::assertSame( 2, $dry['quick']['migrated'] );
+		static::assertFalse( get_option( 'pv_redirects' ) );
+		Migrator::migrate();
+		$rows = get_option( 'pv_redirects' );
+		static::assertSame( '/target?x=1&amp;y=2', $rows['/search/?a=One&b=Two&c=%26']['to'] );
+		static::assertArrayHasKey( '/absolute/?a=1&b=2', $rows );
+		$match = \PV\Redirects\RedirectHandler::matchForPath( '/search/', 'a=one&b=two&c=%26' );
+		static::assertSame( '/target?x=1&amp;y=2', $match['rule']['to'] );
+		$again = Migrator::migrate( [], [ 'delete_source' => true ] );
+		static::assertSame( 2, $again['quick']['skipped_existing'] );
+		static::assertFalse( get_option( 'quickppr_redirects' ) );
+	}
+
+	public function testEscapedSourceCollisionIsRetainedForReview(): void {
+		$source = '/search/?a=1&#038;b=2';
+		update_option( 'quickppr_redirects', [ $source => '/legacy' ] );
+		update_option( 'pv_redirects', [ '/search/?a=1&b=2' => [ 'to' => '/existing', 'status' => 301 ] ] );
+		$report = Migrator::migrate( [], [ 'delete_source' => true ] );
+		static::assertSame( '/existing', get_option( 'pv_redirects' )['/search/?a=1&b=2']['to'] );
+		static::assertSame( [ $source => '/legacy' ], get_option( 'quickppr_redirects' ) );
+		static::assertStringContainsString( 'differs', self::warnings( $report ) );
+	}
+
+	public function testRepairKeepsExistingEscapedPvKeyAndDecodesOnlyOnce(): void {
+		$source = '/literal&amp;path/?a=1&amp;#038;b=2';
+		update_option( 'quickppr_redirects', [ $source => '/target' ] );
+		update_option( 'pv_redirects', [ $source => [ 'to' => '/target', 'status' => 301 ] ] );
+		Migrator::migrate();
+		$rows = get_option( 'pv_redirects' );
+		static::assertArrayHasKey( $source, $rows );
+		static::assertArrayHasKey( '/literal&amp;path/?a=1&#038;b=2', $rows );
+	}
+
+	public function testPreviouslyMigratedEscapedSourceIsRepairedWithoutOverwriting(): void {
+		$source = '/search/?Route=One&#038;id=2';
+		update_option( 'quickppr_redirects', [ $source => '/target' ] );
+		update_option( 'ppr_override-casesensitive', '1' );
+		update_option( 'pv_redirects', [ $source => [ 'to' => '/target', 'status' => 301 ] ] );
+		Migrator::migrate();
+		$rows = get_option( 'pv_redirects' );
+		static::assertArrayHasKey( $source, $rows );
+		static::assertArrayHasKey( '/search/?Route=One&id=2', $rows );
+		static::assertNotNull( \PV\Redirects\RedirectHandler::matchForPath( '/search/', 'Route=One&id=2' ) );
+		static::assertNull( \PV\Redirects\RedirectHandler::matchForPath( '/search/', 'route=one&id=2' ) );
+		static::assertSame( 1, Migrator::migrate()['quick']['skipped_existing'] );
+	}
+
+	public function testEscapedSourcesWithConflictingNormalizedKeysAreNotDeleted(): void {
+		$source = '/old/?A=1&#38;B=2';
+		update_option( 'quickppr_redirects', [ $source => '/legacy' ] );
+		update_option( 'pv_redirects', [ '/old/?a=1&b=2' => [ 'to' => '/other', 'status' => 301 ] ] );
+		$report = Migrator::migrate( [], [ 'delete_source' => true ] );
+		static::assertSame( [ $source => '/legacy' ], get_option( 'quickppr_redirects' ) );
+		static::assertStringContainsString( 'conflicts', self::warnings( $report ) );
+	}
+
 	public function testSameSiteAbsoluteSourceIsImportedAndForeignSourceIsPreserved(): void {
 		$home = rtrim( home_url(), '/' );
 		update_option( 'quickppr_redirects', [ $home.'/Full/?Route=One' => '/target', 'https://foreign.invalid/full/' => '/other' ] );

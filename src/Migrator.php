@@ -22,6 +22,9 @@ use function is_int;
 use function is_string;
 use function wp_parse_url;
 use function preg_match;
+use function preg_replace;
+use function strpos;
+use function substr;
 use function remove_action;
 use function sprintf;
 use function str_starts_with;
@@ -192,7 +195,12 @@ final class Migrator {
 						continue;
 					}
 
-					$request = self::sourceKey( $key );
+					$normalizedKey = self::normalizeLegacyQuerySeparators( $key );
+					if ( $normalizedKey !== $key ) {
+						/* translators: %s: original QPPR quick redirect request key. */
+						$warnings[] = sprintf( __( 'Normalized escaped query separators in quick redirect "%s".', 'pv-redirects' ), $key );
+					}
+					$request = self::sourceKey( $normalizedKey );
 
 					if ( $request === null ) {
 						$warnings[] = sprintf(
@@ -597,6 +605,17 @@ final class Migrator {
 		}
 
 		return $dropped;
+	}
+
+	/** Normalize one layer of QPPR HTML-escaped ampersands in the query only. */
+	private static function normalizeLegacyQuerySeparators( string $key ): string {
+		$position = strpos( $key, '?' );
+		if ( $position === false ) {
+			return $key;
+		}
+		$query = substr( $key, $position + 1 );
+		$normalized = preg_replace( '~&(?:amp|#0*38|#x0*26);~i', '&', $query );
+		return substr( $key, 0, $position + 1 ).( $normalized ?? $query );
 	}
 
 	/** Convert absolute same-site sources without decoding path or query bytes. */

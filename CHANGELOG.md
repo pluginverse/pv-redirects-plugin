@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Import QPPR source queries with HTML-escaped ampersands so they match normal HTTP requests.
+
 ## [1.1.0] - 2026-11-07
 
 ### Added

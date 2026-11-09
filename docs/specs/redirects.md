@@ -63,6 +63,7 @@ redirect manager — CLI-first, no jQuery, wildcard-capable.
   `skipped_existing`, never duplicated.
 - Dropped QPPR features (new-window, nofollow, link rewriting, meta-refresh) are counted and
   warned, never silent: type `meta` and unknown types downgrade to 301 with warnings; same-site HTTP(S) source URLs within the home path become site-relative keys with query bytes preserved. Foreign, invalid, and unsupported URL sources are skipped with a review warning. Conflicting normalized keys are retained in QPPR for review, including with `--delete-source`.
+- QPPR quick source queries normalize one layer of HTML-escaped ampersand separators before URL parsing, with a warning. Native PV keys, source paths, other entities, percent escapes, and destinations are unchanged. Re-running migration can add corrected keys while preserving previously imported PV rows.
 - Report ends by instructing the operator to deactivate QPPR (both plugins at `init:1` would
   double-redirect).
 - Migration loads through the production plugin classmap without Composer or development dependencies.
